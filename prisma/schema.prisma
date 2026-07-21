@@ -1,0 +1,48 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      String   @default("admin") // admin
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PuntoAcopio {
+  id          String        @id @default(cuid())
+  nombre      String
+  direccion   String
+  zona        String?
+  materiales  String // texto libre, ej: "papel, cartón, plástico PET, aluminio"
+  responsable String?
+  contacto    String?
+  activo      Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  fechas      FechaAcopio[]
+}
+
+model FechaAcopio {
+  id            String      @id @default(cuid())
+  puntoAcopio   PuntoAcopio @relation(fields: [puntoAcopioId], references: [id], onDelete: Cascade)
+  puntoAcopioId String
+  fecha         DateTime
+  horaInicio    String? // "09:00"
+  horaFin       String? // "13:00"
+  estado        String      @default("programada") // programada | realizada | cancelada
+  notas         String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
