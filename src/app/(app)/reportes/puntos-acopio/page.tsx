@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { usePermisos } from "@/lib/role-context";
 
 type PuntoAcopio = { id: string; nombre: string; zona: string | null };
 
@@ -13,6 +14,10 @@ type FechaAcopio = {
   horaFin: string | null;
   estado: string;
   notas: string | null;
+  petKg: number | null;
+  tapasKg: number | null;
+  aluminioKg: number | null;
+  tapasWinsKg: number | null;
 };
 
 const ESTADOS = ["programada", "realizada", "cancelada"];
@@ -25,6 +30,10 @@ function exportarCSV(filas: FechaAcopio[]) {
     "Hora inicio",
     "Hora fin",
     "Estado",
+    "Kgs Tapas",
+    "Kgs PET",
+    "Kgs Aluminio",
+    "Kgs Tapas Wins",
     "Notas",
   ];
   const lineas = filas.map((f) =>
@@ -35,6 +44,10 @@ function exportarCSV(filas: FechaAcopio[]) {
       f.horaInicio ?? "",
       f.horaFin ?? "",
       f.estado,
+      f.tapasKg ?? "",
+      f.petKg ?? "",
+      f.aluminioKg ?? "",
+      f.tapasWinsKg ?? "",
       f.notas ?? "",
     ]
       .map((valor) => `"${String(valor).replace(/"/g, '""')}"`)
@@ -52,28 +65,48 @@ function exportarCSV(filas: FechaAcopio[]) {
 }
 
 export default function ReportePuntosAcopioPage() {
+  const { sincronizarNotion: esAdmin } = usePermisos();
   const [fechas, setFechas] = useState<FechaAcopio[]>([]);
   const [puntos, setPuntos] = useState<PuntoAcopio[]>([]);
   const [cargando, setCargando] = useState(true);
+  const [sincronizando, setSincronizando] = useState(false);
+  const [resultadoSync, setResultadoSync] = useState<string | null>(null);
 
   const [filtroPunto, setFiltroPunto] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("");
   const [filtroDesde, setFiltroDesde] = useState("");
   const [filtroHasta, setFiltroHasta] = useState("");
 
+  async function cargar() {
+    setCargando(true);
+    const [resFechas, resPuntos] = await Promise.all([
+      fetch("/api/fechas-acopio"),
+      fetch("/api/puntos-acopio"),
+    ]);
+    setFechas(await resFechas.json());
+    setPuntos(await resPuntos.json());
+    setCargando(false);
+  }
+
   useEffect(() => {
-    async function cargar() {
-      setCargando(true);
-      const [resFechas, resPuntos] = await Promise.all([
-        fetch("/api/fechas-acopio"),
-        fetch("/api/puntos-acopio"),
-      ]);
-      setFechas(await resFechas.json());
-      setPuntos(await resPuntos.json());
-      setCargando(false);
-    }
     cargar();
   }, []);
+
+  async function sincronizarConNotion() {
+    setSincronizando(true);
+    setResultadoSync(null);
+    try {
+      const res = await fetch("/api/sync/notion-acopios", { method: "POST" });
+      if (!res.ok) throw new Error(await res.text());
+      const { creados, actualizados } = await res.json();
+      setResultadoSync(`${creados} nuevos, ${actualizados} actualizados`);
+      await cargar();
+    } catch {
+      setResultadoSync("Error al sincronizar con Notion");
+    } finally {
+      setSincronizando(false);
+    }
+  }
 
   const filtradas = useMemo(() => {
     return fechas.filter((f) => {
@@ -90,16 +123,30 @@ export default function ReportePuntosAcopioPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-semibold">Reporte de Puntos y Fechas de Acopio</h1>
-        <button
-          onClick={() => exportarCSV(filtradas)}
-          disabled={filtradas.length === 0}
-          className="rounded-md border border-accent px-3 py-2 text-sm font-medium text-accent disabled:opacity-50"
-        >
-          Exportar CSV
-        </button>
+        <div className="flex items-center gap-3">
+          {resultadoSync && (
+            <span className="text-sm text-foreground/60">{resultadoSync}</span>
+          )}
+          {esAdmin && (
+            <button
+              onClick={sincronizarConNotion}
+              disabled={sincronizando}
+              className="rounded-xl border border-[var(--brand-blue)] px-3 py-2 text-sm font-medium text-[var(--brand-blue)] hover:bg-white/40 disabled:opacity-50"
+            >
+              {sincronizando ? "Sincronizando..." : "Sincronizar con Notion"}
+            </button>
+          )}
+          <button
+            onClick={() => exportarCSV(filtradas)}
+            disabled={filtradas.length === 0}
+            className="rounded-xl border border-[var(--brand-blue)] px-3 py-2 text-sm font-medium text-[var(--brand-blue)] hover:bg-white/40 disabled:opacity-50"
+          >
+            Exportar CSV
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 rounded-lg border border-border p-4 sm:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 rounded-xl border border-white/50 bg-white/40 backdrop-blur-md p-4 sm:grid-cols-4">
         <label className="space-y-1 text-sm">
           <span className="font-medium">Punto de acopio</span>
           <select
@@ -153,21 +200,24 @@ export default function ReportePuntosAcopioPage() {
       {cargando ? (
         <p className="text-sm text-foreground/60">Cargando...</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border">
+        <div className="overflow-x-auto rounded-xl border border-white/50 bg-white/40 backdrop-blur-md">
           <table className="w-full text-sm">
-            <thead className="bg-foreground/5 text-left">
+            <thead className="bg-white/50 text-left">
               <tr>
                 <th className="px-3 py-2">Punto de acopio</th>
                 <th className="px-3 py-2">Zona</th>
                 <th className="px-3 py-2">Fecha</th>
                 <th className="px-3 py-2">Horario</th>
                 <th className="px-3 py-2">Estado</th>
+                <th className="px-3 py-2">Kgs Tapas</th>
+                <th className="px-3 py-2">Kgs PET</th>
+                <th className="px-3 py-2">Kgs Aluminio</th>
                 <th className="px-3 py-2">Notas</th>
               </tr>
             </thead>
             <tbody>
               {filtradas.map((f) => (
-                <tr key={f.id} className="border-t border-border">
+                <tr key={f.id} className="border-t border-white/50">
                   <td className="px-3 py-2 font-medium">{f.puntoAcopio.nombre}</td>
                   <td className="px-3 py-2">{f.puntoAcopio.zona}</td>
                   <td className="px-3 py-2">{f.fecha.slice(0, 10)}</td>
@@ -175,12 +225,15 @@ export default function ReportePuntosAcopioPage() {
                     {f.horaInicio ?? "—"} - {f.horaFin ?? "—"}
                   </td>
                   <td className="px-3 py-2 capitalize">{f.estado}</td>
+                  <td className="px-3 py-2">{f.tapasKg ?? "—"}</td>
+                  <td className="px-3 py-2">{f.petKg ?? "—"}</td>
+                  <td className="px-3 py-2">{f.aluminioKg ?? "—"}</td>
                   <td className="px-3 py-2">{f.notas}</td>
                 </tr>
               ))}
               {filtradas.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-3 py-6 text-center text-foreground/60">
+                  <td colSpan={9} className="px-3 py-6 text-center text-foreground/60">
                     No hay resultados con estos filtros.
                   </td>
                 </tr>

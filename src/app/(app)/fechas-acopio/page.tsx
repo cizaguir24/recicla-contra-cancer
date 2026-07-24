@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePermisos } from "@/lib/role-context";
 
 type PuntoAcopio = { id: string; nombre: string };
 
@@ -27,6 +28,7 @@ const FORM_INICIAL = {
 const ESTADOS = ["programada", "realizada", "cancelada"];
 
 export default function FechasAcopioPage() {
+  const { fechasAcopio: esAdmin } = usePermisos();
   const [fechas, setFechas] = useState<FechaAcopio[]>([]);
   const [puntos, setPuntos] = useState<PuntoAcopio[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -91,13 +93,15 @@ export default function FechasAcopioPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Fechas de Acopio</h1>
-        <button
-          onClick={abrirNuevo}
-          disabled={puntos.length === 0}
-          className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-accent-foreground disabled:opacity-50"
-        >
-          + Nueva fecha
-        </button>
+        {esAdmin && (
+          <button
+            onClick={abrirNuevo}
+            disabled={puntos.length === 0}
+            className="rounded-xl bg-[var(--brand-blue)] px-3 py-2 text-sm font-medium text-[var(--accent-foreground)] shadow-sm disabled:opacity-50"
+          >
+            + Nueva fecha
+          </button>
+        )}
       </div>
 
       {puntos.length === 0 && !cargando && (
@@ -109,7 +113,7 @@ export default function FechasAcopioPage() {
       {mostrarForm && (
         <form
           onSubmit={guardar}
-          className="grid grid-cols-1 gap-3 rounded-lg border border-border p-4 sm:grid-cols-2"
+          className="grid grid-cols-1 gap-3 rounded-xl border border-white/50 bg-white/40 backdrop-blur-md p-4 sm:grid-cols-2"
         >
           <label className="space-y-1 text-sm">
             <span className="font-medium">Punto de acopio</span>
@@ -179,14 +183,14 @@ export default function FechasAcopioPage() {
           <div className="flex gap-2 sm:col-span-2">
             <button
               type="submit"
-              className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-accent-foreground"
+              className="rounded-xl bg-[var(--brand-blue)] px-3 py-2 text-sm font-medium text-[var(--accent-foreground)] shadow-sm"
             >
               Guardar
             </button>
             <button
               type="button"
               onClick={() => setMostrarForm(false)}
-              className="rounded-md border border-border px-3 py-2 text-sm"
+              className="rounded-xl border border-white/50 bg-white/40 backdrop-blur-md px-3 py-2 text-sm hover:bg-white/40"
             >
               Cancelar
             </button>
@@ -197,9 +201,9 @@ export default function FechasAcopioPage() {
       {cargando ? (
         <p className="text-sm text-foreground/60">Cargando...</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border">
+        <div className="overflow-x-auto rounded-xl border border-white/50 bg-white/40 backdrop-blur-md">
           <table className="w-full text-sm">
-            <thead className="bg-foreground/5 text-left">
+            <thead className="bg-white/50 text-left">
               <tr>
                 <th className="px-3 py-2">Punto de acopio</th>
                 <th className="px-3 py-2">Fecha</th>
@@ -211,7 +215,7 @@ export default function FechasAcopioPage() {
             </thead>
             <tbody>
               {fechas.map((f) => (
-                <tr key={f.id} className="border-t border-border">
+                <tr key={f.id} className="border-t border-white/50">
                   <td className="px-3 py-2 font-medium">{f.puntoAcopio.nombre}</td>
                   <td className="px-3 py-2">{f.fecha.slice(0, 10)}</td>
                   <td className="px-3 py-2">
@@ -220,18 +224,22 @@ export default function FechasAcopioPage() {
                   <td className="px-3 py-2 capitalize">{f.estado}</td>
                   <td className="px-3 py-2">{f.notas}</td>
                   <td className="px-3 py-2 whitespace-nowrap">
-                    <button
-                      onClick={() => abrirEdicion(f)}
-                      className="mr-2 text-accent hover:underline"
-                    >
-                      Editar
-                    </button>
-                    <button
-                      onClick={() => eliminar(f.id)}
-                      className="text-red-500 hover:underline"
-                    >
-                      Eliminar
-                    </button>
+                    {esAdmin && (
+                      <>
+                        <button
+                          onClick={() => abrirEdicion(f)}
+                          className="mr-2 text-[var(--brand-blue)] hover:underline"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          onClick={() => eliminar(f.id)}
+                          className="text-red-500 hover:underline"
+                        >
+                          Eliminar
+                        </button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}

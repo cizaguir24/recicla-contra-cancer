@@ -10,9 +10,11 @@
     "db:seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
-    "@prisma/adapter-better-sqlite3": "^7.9.0",
+    "@libsql/client": "^0.17.4",
+    "@prisma/adapter-libsql": "^7.9.0",
     "@prisma/client": "^7.9.0",
     "bcryptjs": "^3.0.3",
+    "lucide-react": "^1.25.0",
     "next": "16.2.11",
     "next-auth": "^5.0.0-beta.32",
     "prisma": "^7.9.0",

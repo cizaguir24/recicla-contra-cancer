@@ -10,13 +10,13 @@ export default function LoginPage() {
   );
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-100 via-white to-purple-100 px-4">
       <form
         action={formAction}
-        className="w-full max-w-sm space-y-4 rounded-lg border border-border p-6"
+        className="w-full max-w-sm space-y-4 rounded-2xl border border-white/50 bg-white/70 p-8 shadow-2xl backdrop-blur-xl backdrop-saturate-150"
       >
         <div className="text-center">
-          <h1 className="text-lg font-semibold text-accent">
+          <h1 className="text-lg font-semibold text-[var(--brand-blue-dark)]">
             ♻️ Recicla Contra el Cáncer
           </h1>
           <p className="text-sm text-foreground/60">
@@ -33,7 +33,7 @@ export default function LoginPage() {
             type="text"
             required
             autoComplete="username"
-            className="w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm outline-none focus:border-accent"
+            className="input"
           />
         </div>
         <div className="space-y-1">
@@ -46,7 +46,7 @@ export default function LoginPage() {
             type="password"
             required
             autoComplete="current-password"
-            className="w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm outline-none focus:border-accent"
+            className="input"
           />
         </div>
         {errorMessage && (
@@ -55,7 +55,7 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={pending}
-          className="w-full rounded-md bg-accent px-3 py-2 text-sm font-medium text-accent-foreground transition-opacity disabled:opacity-60"
+          className="w-full rounded-xl bg-[var(--brand-blue)] py-2.5 text-sm font-semibold text-white shadow-sm transition-opacity disabled:opacity-60"
         >
           {pending ? "Entrando..." : "Entrar"}
         </button>

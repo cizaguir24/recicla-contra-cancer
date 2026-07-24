@@ -1,12 +1,38 @@
 import "dotenv/config";
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "../src/generated/prisma/client";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { PrismaLibSql } from "@prisma/adapter-libsql";
 
-const adapter = new PrismaBetterSqlite3({ url: process.env.DATABASE_URL! });
+const adapter = new PrismaLibSql({
+  url: process.env.TURSO_DATABASE_URL!,
+  authToken: process.env.TURSO_AUTH_TOKEN!,
+});
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
+  const rolAdmin = await prisma.role.upsert({
+    where: { nombre: "Administrador" },
+    update: {},
+    create: {
+      id: "role-administrador",
+      nombre: "Administrador",
+      esSistema: true,
+      puntosAcopio: true,
+      fechasAcopio: true,
+      sincronizarNotion: true,
+      configuracion: true,
+    },
+  });
+
+  await prisma.role.upsert({
+    where: { nombre: "Consulta" },
+    update: {},
+    create: {
+      id: "role-consulta",
+      nombre: "Consulta",
+    },
+  });
+
   const adminPassword = await bcrypt.hash("admin", 10);
   await prisma.user.upsert({
     where: { email: "admin" },
@@ -15,7 +41,7 @@ async function main() {
       email: "admin",
       password: adminPassword,
       name: "Administrador",
-      role: "admin",
+      roleId: rolAdmin.id,
     },
   });
 

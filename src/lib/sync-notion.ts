@@ -1,0 +1,97 @@
+import { prisma } from "@/lib/prisma";
+import {
+  queryDataSource,
+  getPage,
+  getTitleText,
+  getRichText,
+  getSelectName,
+  getNumber,
+  getDateStart,
+  getFormulaNumber,
+  getRelationIds,
+} from "@/lib/notion";
+
+const ACOPIOS_2026_DATA_SOURCE_ID = "2dcbc6f4-11db-81d0-8cb2-000bb99aafb0";
+
+export async function sincronizarNotion() {
+  const pages = await queryDataSource(ACOPIOS_2026_DATA_SOURCE_ID);
+
+  const puntoIdPorUbicacion = new Map<string, string>();
+
+  let creados = 0;
+  let actualizados = 0;
+
+  for (const page of pages) {
+    const fechaStr = getDateStart(page, "Fecha de Acopio");
+    if (!fechaStr) continue;
+
+    const [ubicacionId] = getRelationIds(page, "Ubicación");
+    if (!ubicacionId) continue;
+
+    let puntoAcopioId = puntoIdPorUbicacion.get(ubicacionId);
+
+    if (!puntoAcopioId) {
+      const ubicacionPage = await getPage(ubicacionId);
+      const nombre =
+        getTitleText(ubicacionPage, "Empresa, institución, otro") || "Sin nombre (Notion)";
+      const municipio = getRichText(ubicacionPage, "Municipio") || null;
+      const tipoContenedor = getSelectName(ubicacionPage, "Tipo de contenedor");
+      const decisionReubicacion = getSelectName(ubicacionPage, "Decisión de Reubicación");
+
+      const punto = await prisma.puntoAcopio.upsert({
+        where: { notionPageId: ubicacionId },
+        create: {
+          nombre,
+          direccion: "",
+          materiales: "tapas, PET, aluminio",
+          zona: municipio,
+          tipoContenedor,
+          decisionReubicacion,
+          notionPageId: ubicacionId,
+        },
+        update: {
+          nombre,
+          zona: municipio,
+          tipoContenedor,
+          decisionReubicacion,
+        },
+      });
+
+      puntoAcopioId = punto.id;
+      puntoIdPorUbicacion.set(ubicacionId, puntoAcopioId);
+    }
+
+    const datosNotion = {
+      fecha: new Date(fechaStr),
+      petKg: getNumber(page, "PET Kgs"),
+      tapasKg: getNumber(page, "Tapas Kgs"),
+      aluminioKg: getNumber(page, "Aluminio Kgs"),
+      tapasWinsKg: getNumber(page, "Tapas Wins Kgs "),
+      totalTapas: getFormulaNumber(page, "Total Tapas"),
+    };
+
+    const existente = await prisma.fechaAcopio.findUnique({
+      where: { notionPageId: page.id },
+    });
+
+    if (existente) {
+      await prisma.fechaAcopio.update({
+        where: { id: existente.id },
+        data: datosNotion,
+      });
+      actualizados++;
+    } else {
+      await prisma.fechaAcopio.create({
+        data: {
+          ...datosNotion,
+          estado: "realizada",
+          puntoAcopioId,
+          notionPageId: page.id,
+        },
+      });
+      creados++;
+    }
+  }
+
+  return { creados, actualizados, total: pages.length };
+}

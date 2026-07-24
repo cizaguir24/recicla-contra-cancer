@@ -1,11 +1,19 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  --accent: #15803d;
+  --background: #f7f8fa;
+  --surface: #ffffff;
+  --foreground: #1f2430;
+  --muted: #6b7280;
+  --border: #e7e9ed;
+
+  --accent: #2563eb;
   --accent-foreground: #ffffff;
-  --border: #e4e4e7;
+  --brand-blue: #2563eb;
+  --brand-blue-dark: #1d4ed8;
+  --brand-blue-light: #eaf1fe;
+  --brand-amber: #f59e0b;
+  --brand-red: #ef4444;
 }
 
 @theme inline {
@@ -18,24 +26,24 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-    --accent: #22c55e;
-    --accent-foreground: #052e16;
-    --border: #27272a;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 8px;
 }
 
 @layer components {
   .input {
-    @apply w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm outline-none focus:border-accent;
+    @apply w-full rounded-lg border border-border bg-white/70 px-3 py-2 text-sm outline-none focus:border-accent;
+    min-width: 0;
   }
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePermisos } from "@/lib/role-context";
 
 type PuntoAcopio = {
   id: string;
@@ -24,6 +25,7 @@ const FORM_INICIAL = {
 };
 
 export default function PuntosAcopioPage() {
+  const { puntosAcopio: esAdmin } = usePermisos();
   const [puntos, setPuntos] = useState<PuntoAcopio[]>([]);
   const [cargando, setCargando] = useState(true);
   const [editId, setEditId] = useState<string | null>(null);
@@ -86,18 +88,20 @@ export default function PuntosAcopioPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Puntos de Acopio</h1>
-        <button
-          onClick={abrirNuevo}
-          className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-accent-foreground"
-        >
-          + Nuevo punto
-        </button>
+        {esAdmin && (
+          <button
+            onClick={abrirNuevo}
+            className="rounded-xl bg-[var(--brand-blue)] px-3 py-2 text-sm font-medium text-[var(--accent-foreground)] shadow-sm"
+          >
+            + Nuevo punto
+          </button>
+        )}
       </div>
 
       {mostrarForm && (
         <form
           onSubmit={guardar}
-          className="grid grid-cols-1 gap-3 rounded-lg border border-border p-4 sm:grid-cols-2"
+          className="grid grid-cols-1 gap-3 rounded-xl border border-white/50 bg-white/40 backdrop-blur-md p-4 sm:grid-cols-2"
         >
           <Campo label="Nombre">
             <input
@@ -156,14 +160,14 @@ export default function PuntosAcopioPage() {
           <div className="flex gap-2 sm:col-span-2">
             <button
               type="submit"
-              className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-accent-foreground"
+              className="rounded-xl bg-[var(--brand-blue)] px-3 py-2 text-sm font-medium text-[var(--accent-foreground)] shadow-sm"
             >
               Guardar
             </button>
             <button
               type="button"
               onClick={() => setMostrarForm(false)}
-              className="rounded-md border border-border px-3 py-2 text-sm"
+              className="rounded-xl border border-white/50 bg-white/40 backdrop-blur-md px-3 py-2 text-sm hover:bg-white/40"
             >
               Cancelar
             </button>
@@ -174,9 +178,9 @@ export default function PuntosAcopioPage() {
       {cargando ? (
         <p className="text-sm text-foreground/60">Cargando...</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border">
+        <div className="overflow-x-auto rounded-xl border border-white/50 bg-white/40 backdrop-blur-md">
           <table className="w-full text-sm">
-            <thead className="bg-foreground/5 text-left">
+            <thead className="bg-white/50 text-left">
               <tr>
                 <th className="px-3 py-2">Nombre</th>
                 <th className="px-3 py-2">Dirección</th>
@@ -188,25 +192,29 @@ export default function PuntosAcopioPage() {
             </thead>
             <tbody>
               {puntos.map((punto) => (
-                <tr key={punto.id} className="border-t border-border">
+                <tr key={punto.id} className="border-t border-white/50">
                   <td className="px-3 py-2 font-medium">{punto.nombre}</td>
                   <td className="px-3 py-2">{punto.direccion}</td>
                   <td className="px-3 py-2">{punto.zona}</td>
                   <td className="px-3 py-2">{punto.materiales}</td>
                   <td className="px-3 py-2">{punto.activo ? "Sí" : "No"}</td>
                   <td className="px-3 py-2 whitespace-nowrap">
-                    <button
-                      onClick={() => abrirEdicion(punto)}
-                      className="mr-2 text-accent hover:underline"
-                    >
-                      Editar
-                    </button>
-                    <button
-                      onClick={() => eliminar(punto.id)}
-                      className="text-red-500 hover:underline"
-                    >
-                      Eliminar
-                    </button>
+                    {esAdmin && (
+                      <>
+                        <button
+                          onClick={() => abrirEdicion(punto)}
+                          className="mr-2 text-[var(--brand-blue)] hover:underline"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          onClick={() => eliminar(punto.id)}
+                          className="text-red-500 hover:underline"
+                        >
+                          Eliminar
+                        </button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}
