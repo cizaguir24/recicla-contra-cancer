@@ -45,10 +45,12 @@ export async function sincronizarNotion() {
       const calle = getRichText(ubicacionPage, "Calle");
       const numeroExterior = getRichText(ubicacionPage, "Numero Exterior ");
       const numeroInterior = getRichText(ubicacionPage, "Numero Interior");
+      // "N/A" es el placeholder que se usa en Notion cuando el campo no aplica.
+      const esPlaceholder = (v: string) => !v || v.trim().toUpperCase() === "N/A";
       const direccion = [
-        calle,
-        numeroExterior && `#${numeroExterior}`,
-        numeroInterior && `Int. ${numeroInterior}`,
+        !esPlaceholder(calle) ? calle : null,
+        !esPlaceholder(numeroExterior) ? `#${numeroExterior}` : null,
+        !esPlaceholder(numeroInterior) ? `Int. ${numeroInterior}` : null,
       ]
         .filter(Boolean)
         .join(" ");
