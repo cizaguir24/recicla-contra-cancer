@@ -66,14 +66,14 @@ export default function AppShell({
   return (
     <PermisosProvider permisos={permisos}>
     <div className="min-h-screen flex flex-col">
-      <div className="w-full shrink-0 overflow-hidden">
+      <div className="relative h-24 w-full shrink-0 overflow-hidden sm:h-32 md:h-40 lg:h-48 xl:h-56">
         <Image
-          src="/portada-recicla-vs-cancer.png"
+          src="/Portada_ReciclavsCancer.png"
           alt="Recicla vs Cáncer — un proyecto original de Cómplices AC"
-          width={2172}
-          height={724}
+          fill
           priority
-          className="block h-auto w-full"
+          sizes="100vw"
+          className="object-cover object-center"
         />
       </div>
       <div className="flex flex-1 bg-gradient-to-br from-blue-100 via-white to-purple-100">
