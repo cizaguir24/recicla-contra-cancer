@@ -28,6 +28,7 @@ export async function PATCH(request: NextRequest, { params }: Context) {
   if ("responsable" in body) data.responsable = body.responsable || null;
   if ("contacto" in body) data.contacto = body.contacto || null;
   if ("activo" in body) data.activo = body.activo;
+  if ("estado" in body) data.estado = body.estado || null;
   if ("tipoContenedor" in body) data.tipoContenedor = body.tipoContenedor || null;
   if ("decisionReubicacion" in body) data.decisionReubicacion = body.decisionReubicacion || null;
   if ("numeroCelular" in body) data.numeroCelular = body.numeroCelular || null;

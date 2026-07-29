@@ -41,14 +41,26 @@ export async function sincronizarNotion() {
       const decisionReubicacion = getSelectName(ubicacionPage, "Decisión de Reubicación");
       const numeroCelular = getPhoneNumber(ubicacionPage, "Numero Celular");
       const correoElectronico = getEmail(ubicacionPage, "Correo electrónico");
+      const estadoDireccion = getRichText(ubicacionPage, "Estado") || null;
+      const calle = getRichText(ubicacionPage, "Calle");
+      const numeroExterior = getRichText(ubicacionPage, "Numero Exterior ");
+      const numeroInterior = getRichText(ubicacionPage, "Numero Interior");
+      const direccion = [
+        calle,
+        numeroExterior && `#${numeroExterior}`,
+        numeroInterior && `Int. ${numeroInterior}`,
+      ]
+        .filter(Boolean)
+        .join(" ");
 
       const punto = await prisma.puntoAcopio.upsert({
         where: { notionPageId: ubicacionId },
         create: {
           nombre,
-          direccion: "",
+          direccion,
           materiales: "tapas, PET, aluminio",
           zona: municipio,
+          estado: estadoDireccion,
           tipoContenedor,
           decisionReubicacion,
           numeroCelular,
@@ -57,7 +69,9 @@ export async function sincronizarNotion() {
         },
         update: {
           nombre,
+          direccion,
           zona: municipio,
+          estado: estadoDireccion,
           tipoContenedor,
           decisionReubicacion,
           numeroCelular,

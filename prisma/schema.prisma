@@ -48,6 +48,7 @@ model PuntoAcopio {
   decisionReubicacion String? // "Decisión de Reubicación" de Notion: Sin revisar/Mantener/Dar seguimiento/Reubicar
   numeroCelular String?      // "Numero Celular" de Notion
   correoElectronico String?  // "Correo electrónico" de Notion
+  estado       String?       // "Estado" de Notion (dirección)
   notionPageId String?       @unique // id de la página "Ubicación" en Notion, si vino de un sync
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt

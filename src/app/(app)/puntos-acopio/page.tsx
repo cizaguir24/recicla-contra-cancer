@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { MapPin, Phone, Pencil, Trash2, PackageSearch, X } from "lucide-react";
 import { usePermisos } from "@/lib/role-context";
 
 type PuntoAcopio = {
@@ -8,6 +9,7 @@ type PuntoAcopio = {
   nombre: string;
   direccion: string;
   zona: string | null;
+  estado: string | null;
   materiales: string;
   responsable: string | null;
   contacto: string | null;
@@ -18,6 +20,7 @@ const FORM_INICIAL = {
   nombre: "",
   direccion: "",
   zona: "",
+  estado: "",
   materiales: "",
   responsable: "",
   contacto: "",
@@ -31,18 +34,19 @@ export default function PuntosAcopioPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [mostrarForm, setMostrarForm] = useState(false);
   const [form, setForm] = useState(FORM_INICIAL);
+  const [guardando, setGuardando] = useState(false);
 
-  async function cargarPuntos() {
+  const cargarPuntos = useCallback(async () => {
     setCargando(true);
     const res = await fetch("/api/puntos-acopio");
     const data = await res.json();
     setPuntos(data);
     setCargando(false);
-  }
+  }, []);
 
   useEffect(() => {
     cargarPuntos();
-  }, []);
+  }, [cargarPuntos]);
 
   function abrirNuevo() {
     setEditId(null);
@@ -56,6 +60,7 @@ export default function PuntosAcopioPage() {
       nombre: punto.nombre,
       direccion: punto.direccion,
       zona: punto.zona ?? "",
+      estado: punto.estado ?? "",
       materiales: punto.materiales,
       responsable: punto.responsable ?? "",
       contacto: punto.contacto ?? "",
@@ -64,8 +69,15 @@ export default function PuntosAcopioPage() {
     setMostrarForm(true);
   }
 
+  function cerrarForm() {
+    setMostrarForm(false);
+    setEditId(null);
+    setForm(FORM_INICIAL);
+  }
+
   async function guardar(e: React.FormEvent) {
     e.preventDefault();
+    setGuardando(true);
     const url = editId ? `/api/puntos-acopio/${editId}` : "/api/puntos-acopio";
     const method = editId ? "PATCH" : "POST";
     await fetch(url, {
@@ -73,11 +85,13 @@ export default function PuntosAcopioPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
     });
-    setMostrarForm(false);
+    setGuardando(false);
+    cerrarForm();
     await cargarPuntos();
   }
 
-  async function eliminar(id: string) {
+  async function eliminar(ev: React.MouseEvent, id: string) {
+    ev.stopPropagation();
     if (!confirm("¿Eliminar este punto de acopio? También se eliminarán sus fechas asociadas."))
       return;
     await fetch(`/api/puntos-acopio/${id}`, { method: "DELETE" });
@@ -87,7 +101,13 @@ export default function PuntosAcopioPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Puntos de Acopio</h1>
+        <div>
+          <h1 className="text-xl font-semibold">Puntos de Acopio</h1>
+          <p className="text-sm text-foreground/60">
+            {puntos.length} punto{puntos.length === 1 ? "" : "s"} registrado
+            {puntos.length === 1 ? "" : "s"}
+          </p>
+        </div>
         {esAdmin && (
           <button
             onClick={abrirNuevo}
@@ -98,135 +118,173 @@ export default function PuntosAcopioPage() {
         )}
       </div>
 
-      {mostrarForm && (
-        <form
-          onSubmit={guardar}
-          className="grid grid-cols-1 gap-3 rounded-xl border border-white/50 bg-white/40 backdrop-blur-md p-4 sm:grid-cols-2"
-        >
-          <Campo label="Nombre">
-            <input
-              required
-              value={form.nombre}
-              onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-              className="input"
-            />
-          </Campo>
-          <Campo label="Dirección">
-            <input
-              required
-              value={form.direccion}
-              onChange={(e) => setForm({ ...form, direccion: e.target.value })}
-              className="input"
-            />
-          </Campo>
-          <Campo label="Zona">
-            <input
-              value={form.zona}
-              onChange={(e) => setForm({ ...form, zona: e.target.value })}
-              className="input"
-            />
-          </Campo>
-          <Campo label="Materiales aceptados">
-            <input
-              required
-              placeholder="papel, cartón, plástico PET, aluminio"
-              value={form.materiales}
-              onChange={(e) => setForm({ ...form, materiales: e.target.value })}
-              className="input"
-            />
-          </Campo>
-          <Campo label="Responsable">
-            <input
-              value={form.responsable}
-              onChange={(e) => setForm({ ...form, responsable: e.target.value })}
-              className="input"
-            />
-          </Campo>
-          <Campo label="Contacto">
-            <input
-              value={form.contacto}
-              onChange={(e) => setForm({ ...form, contacto: e.target.value })}
-              className="input"
-            />
-          </Campo>
-          <label className="flex items-center gap-2 text-sm sm:col-span-2">
-            <input
-              type="checkbox"
-              checked={form.activo}
-              onChange={(e) => setForm({ ...form, activo: e.target.checked })}
-            />
-            Activo
-          </label>
-          <div className="flex gap-2 sm:col-span-2">
-            <button
-              type="submit"
-              className="rounded-xl bg-[var(--brand-blue)] px-3 py-2 text-sm font-medium text-[var(--accent-foreground)] shadow-sm"
-            >
-              Guardar
-            </button>
-            <button
-              type="button"
-              onClick={() => setMostrarForm(false)}
-              className="rounded-xl border border-white/50 bg-white/40 backdrop-blur-md px-3 py-2 text-sm hover:bg-white/40"
-            >
-              Cancelar
-            </button>
-          </div>
-        </form>
-      )}
-
       {cargando ? (
         <p className="text-sm text-foreground/60">Cargando...</p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-white/50 bg-white/40 backdrop-blur-md">
-          <table className="w-full text-sm">
-            <thead className="bg-white/50 text-left">
-              <tr>
-                <th className="px-3 py-2">Nombre</th>
-                <th className="px-3 py-2">Dirección</th>
-                <th className="px-3 py-2">Zona</th>
-                <th className="px-3 py-2">Materiales</th>
-                <th className="px-3 py-2">Activo</th>
-                <th className="px-3 py-2"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {puntos.map((punto) => (
-                <tr key={punto.id} className="border-t border-white/50">
-                  <td className="px-3 py-2 font-medium">{punto.nombre}</td>
-                  <td className="px-3 py-2">{punto.direccion}</td>
-                  <td className="px-3 py-2">{punto.zona}</td>
-                  <td className="px-3 py-2">{punto.materiales}</td>
-                  <td className="px-3 py-2">{punto.activo ? "Sí" : "No"}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">
-                    {esAdmin && (
-                      <>
-                        <button
-                          onClick={() => abrirEdicion(punto)}
-                          className="mr-2 text-[var(--brand-blue)] hover:underline"
-                        >
-                          Editar
-                        </button>
-                        <button
-                          onClick={() => eliminar(punto.id)}
-                          className="text-red-500 hover:underline"
-                        >
-                          Eliminar
-                        </button>
-                      </>
-                    )}
-                  </td>
-                </tr>
-              ))}
-              {puntos.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-3 py-6 text-center text-foreground/60">
-                    No hay puntos de acopio registrados.
-                  </td>
-                </tr>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {puntos.map((p) => (
+            <div
+              key={p.id}
+              className="rounded-xl border border-white/60 bg-white/40 p-4 shadow-lg shadow-black/5 backdrop-blur-md backdrop-saturate-150"
+            >
+              <div className="mb-1 flex items-start justify-between gap-2">
+                <h2 className="font-semibold text-[var(--foreground)]">{p.nombre}</h2>
+                <div className="flex shrink-0 items-center gap-2">
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                      p.activo ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
+                    }`}
+                  >
+                    {p.activo ? "Activo" : "Inactivo"}
+                  </span>
+                  {esAdmin && (
+                    <>
+                      <button
+                        onClick={() => abrirEdicion(p)}
+                        title="Editar"
+                        className="rounded p-1 text-[var(--muted)] hover:bg-white/60 hover:text-[var(--brand-blue)]"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={(ev) => eliminar(ev, p.id)}
+                        title="Eliminar"
+                        className="rounded p-1 text-[var(--muted)] hover:bg-red-50 hover:text-red-500"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <p className="mb-3 flex items-start gap-1 text-xs text-[var(--muted)]">
+                <MapPin className="mt-0.5 h-3 w-3 shrink-0" />
+                <span>
+                  {p.direccion || "Sin dirección"}
+                  {p.zona ? `, ${p.zona}` : ""}
+                  {p.estado ? `, ${p.estado}` : ""}
+                </span>
+              </p>
+
+              <div className="mb-2 rounded-lg bg-white/40 p-3 text-xs">
+                <p className="text-[var(--muted)]">Materiales</p>
+                <p className="font-medium text-[var(--foreground)]">{p.materiales}</p>
+              </div>
+
+              {(p.responsable || p.contacto) && (
+                <div className="flex flex-wrap items-center gap-3 border-t border-[var(--border)] pt-2 text-xs text-[var(--muted)]">
+                  {p.responsable && <span>{p.responsable}</span>}
+                  {p.contacto && (
+                    <span className="flex items-center gap-1">
+                      <Phone className="h-3 w-3 shrink-0" /> {p.contacto}
+                    </span>
+                  )}
+                </div>
               )}
-            </tbody>
-          </table>
+            </div>
+          ))}
+          {puntos.length === 0 && (
+            <div className="col-span-full flex min-h-[30vh] flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-white/60 bg-white/20 text-center backdrop-blur-sm">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--brand-blue-light)]">
+                <PackageSearch className="h-6 w-6 text-[var(--brand-blue-dark)]" />
+              </div>
+              <p className="text-sm text-[var(--muted)]">No hay puntos de acopio registrados.</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {mostrarForm && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/20 px-4 py-8 backdrop-blur-sm">
+          <div className="w-full max-w-md max-h-full overflow-y-auto rounded-2xl border border-white/50 bg-white/70 p-6 shadow-2xl backdrop-blur-xl backdrop-saturate-150">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold">
+                {editId ? "Editar punto de acopio" : "Nuevo punto de acopio"}
+              </h2>
+              <button onClick={cerrarForm}>
+                <X className="h-5 w-5 text-[var(--muted)]" />
+              </button>
+            </div>
+            <form onSubmit={guardar} className="space-y-3">
+              <Campo label="Nombre">
+                <input
+                  required
+                  value={form.nombre}
+                  onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+                  className="input"
+                />
+              </Campo>
+              <Campo label="Dirección">
+                <input
+                  required
+                  value={form.direccion}
+                  onChange={(e) => setForm({ ...form, direccion: e.target.value })}
+                  className="input"
+                />
+              </Campo>
+              <div className="grid grid-cols-2 gap-3">
+                <Campo label="Municipio">
+                  <input
+                    value={form.zona}
+                    onChange={(e) => setForm({ ...form, zona: e.target.value })}
+                    className="input"
+                  />
+                </Campo>
+                <Campo label="Estado">
+                  <input
+                    value={form.estado}
+                    onChange={(e) => setForm({ ...form, estado: e.target.value })}
+                    className="input"
+                  />
+                </Campo>
+              </div>
+              <Campo label="Materiales aceptados">
+                <input
+                  required
+                  placeholder="papel, cartón, plástico PET, aluminio"
+                  value={form.materiales}
+                  onChange={(e) => setForm({ ...form, materiales: e.target.value })}
+                  className="input"
+                />
+              </Campo>
+              <div className="grid grid-cols-2 gap-3">
+                <Campo label="Responsable">
+                  <input
+                    value={form.responsable}
+                    onChange={(e) => setForm({ ...form, responsable: e.target.value })}
+                    className="input"
+                  />
+                </Campo>
+                <Campo label="Contacto">
+                  <input
+                    value={form.contacto}
+                    onChange={(e) => setForm({ ...form, contacto: e.target.value })}
+                    className="input"
+                  />
+                </Campo>
+              </div>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={form.activo}
+                  onChange={(e) => setForm({ ...form, activo: e.target.checked })}
+                />
+                Activo
+              </label>
+              <p className="text-[11px] text-[var(--muted)]">
+                Dirección, municipio y estado pueden sobrescribirse en la próxima sincronización
+                con Notion.
+              </p>
+              <button
+                type="submit"
+                disabled={guardando}
+                className="w-full rounded-xl bg-[var(--brand-blue)] py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+              >
+                {guardando ? "Guardando…" : "Guardar"}
+              </button>
+            </form>
+          </div>
         </div>
       )}
     </div>

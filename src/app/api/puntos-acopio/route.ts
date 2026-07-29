@@ -19,6 +19,7 @@ export async function POST(request: NextRequest) {
       materiales: body.materiales,
       responsable: body.responsable || null,
       contacto: body.contacto || null,
+      estado: body.estado || null,
       activo: body.activo ?? true,
     },
   });
