@@ -3,6 +3,7 @@ export type Permisos = {
   fechasAcopio: boolean;
   sincronizarNotion: boolean;
   configuracion: boolean;
+  manifiestos: boolean;
 };
 
 export const PERMISOS_KEYS = [
@@ -10,6 +11,7 @@ export const PERMISOS_KEYS = [
   "fechasAcopio",
   "sincronizarNotion",
   "configuracion",
+  "manifiestos",
 ] as const;
 
 export const PERMISOS_LABELS: Record<(typeof PERMISOS_KEYS)[number], string> = {
@@ -17,6 +19,7 @@ export const PERMISOS_LABELS: Record<(typeof PERMISOS_KEYS)[number], string> = {
   fechasAcopio: "Fechas de Acopio",
   sincronizarNotion: "Sincronizar con Notion",
   configuracion: "Configuración",
+  manifiestos: "Manifiestos",
 };
 
 export const PERMISOS_VACIOS: Permisos = {
@@ -24,4 +27,5 @@ export const PERMISOS_VACIOS: Permisos = {
   fechasAcopio: false,
   sincronizarNotion: false,
   configuracion: false,
+  manifiestos: false,
 };

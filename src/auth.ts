@@ -35,6 +35,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             fechasAcopio: user.role.fechasAcopio,
             sincronizarNotion: user.role.sincronizarNotion,
             configuracion: user.role.configuracion,
+            manifiestos: user.role.manifiestos,
           },
         };
       },

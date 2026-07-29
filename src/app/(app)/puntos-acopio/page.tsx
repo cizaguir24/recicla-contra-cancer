@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { MapPin, Phone, Pencil, Trash2, PackageSearch, X } from "lucide-react";
+import Link from "next/link";
+import { MapPin, Phone, Pencil, Trash2, PackageSearch, FileText, X } from "lucide-react";
 import { usePermisos } from "@/lib/role-context";
 
 type PuntoAcopio = {
@@ -173,7 +174,7 @@ export default function PuntosAcopioPage() {
               </div>
 
               {(p.responsable || p.contacto) && (
-                <div className="flex flex-wrap items-center gap-3 border-t border-[var(--border)] pt-2 text-xs text-[var(--muted)]">
+                <div className="mb-2 flex flex-wrap items-center gap-3 text-xs text-[var(--muted)]">
                   {p.responsable && <span>{p.responsable}</span>}
                   {p.contacto && (
                     <span className="flex items-center gap-1">
@@ -182,6 +183,23 @@ export default function PuntosAcopioPage() {
                   )}
                 </div>
               )}
+
+              <div className="flex flex-wrap items-center gap-3 border-t border-[var(--border)] pt-2 text-xs">
+                <Link
+                  href={`/manifiestos?puntoAcopioId=${p.id}`}
+                  className="flex items-center gap-1 text-[var(--brand-blue)] hover:underline"
+                >
+                  <FileText className="h-3.5 w-3.5" /> Manifiestos
+                </Link>
+                {esAdmin && (
+                  <Link
+                    href={`/manifiestos/nuevo?puntoAcopioId=${p.id}`}
+                    className="flex items-center gap-1 text-[var(--muted)] hover:text-[var(--brand-blue)]"
+                  >
+                    + Crear manifiesto
+                  </Link>
+                )}
+              </div>
             </div>
           ))}
           {puntos.length === 0 && (

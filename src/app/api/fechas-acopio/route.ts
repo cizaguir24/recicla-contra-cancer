@@ -1,8 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const { searchParams } = request.nextUrl;
+  const puntoAcopioId = searchParams.get("puntoAcopioId");
+  const desde = searchParams.get("desde");
+  const hasta = searchParams.get("hasta");
+
   const fechas = await prisma.fechaAcopio.findMany({
+    where: {
+      ...(puntoAcopioId && { puntoAcopioId }),
+      ...((desde || hasta) && {
+        fecha: {
+          ...(desde && { gte: new Date(desde) }),
+          ...(hasta && { lte: new Date(`${hasta}T23:59:59`) }),
+        },
+      }),
+    },
     include: { puntoAcopio: true },
     orderBy: { fecha: "desc" },
   });

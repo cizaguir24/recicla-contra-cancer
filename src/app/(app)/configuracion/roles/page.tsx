@@ -12,6 +12,7 @@ type Role = {
   fechasAcopio: boolean;
   sincronizarNotion: boolean;
   configuracion: boolean;
+  manifiestos: boolean;
   _count: { usuarios: number };
 };
 
@@ -21,6 +22,7 @@ const FORM_INICIAL = {
   fechasAcopio: false,
   sincronizarNotion: false,
   configuracion: false,
+  manifiestos: false,
 };
 
 export default function RolesPage() {
@@ -63,6 +65,7 @@ export default function RolesPage() {
       fechasAcopio: role.fechasAcopio,
       sincronizarNotion: role.sincronizarNotion,
       configuracion: role.configuracion,
+      manifiestos: role.manifiestos,
     });
     setError(null);
     setMostrarForm(true);

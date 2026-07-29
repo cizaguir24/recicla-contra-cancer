@@ -29,7 +29,8 @@ export default auth((req) => {
           !permisos?.configuracion) ||
         (pathname.startsWith("/api/puntos-acopio") && !permisos?.puntosAcopio) ||
         (pathname.startsWith("/api/fechas-acopio") && !permisos?.fechasAcopio) ||
-        (pathname.startsWith("/api/sync/notion-acopios") && !permisos?.sincronizarNotion);
+        (pathname.startsWith("/api/sync/notion-acopios") && !permisos?.sincronizarNotion) ||
+        (pathname.startsWith("/api/manifiestos") && !permisos?.manifiestos);
 
       if (bloqueado) {
         return NextResponse.json({ error: "No autorizado" }, { status: 403 });

@@ -9,6 +9,7 @@ import {
   Gauge,
   MapPin,
   CalendarDays,
+  FileText,
   Settings,
   Menu,
   PanelLeftClose,
@@ -24,6 +25,7 @@ const NAV = [
   { href: "/reportes/desempeno", label: "Desempeño", icon: Gauge },
   { href: "/puntos-acopio", label: "Puntos de Acopio", icon: MapPin },
   { href: "/fechas-acopio", label: "Fechas de Acopio", icon: CalendarDays },
+  { href: "/manifiestos", label: "Manifiestos", icon: FileText },
 ];
 
 const NAV_ADMIN = [{ href: "/configuracion", label: "Configuración", icon: Settings }];
