@@ -96,3 +96,15 @@ export function getRelationIds(page: NotionPage, propName: string): string[] {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return prop.relation.map((r: any) => r.id);
 }
+
+export function getPhoneNumber(page: NotionPage, propName: string): string | null {
+  const prop = page.properties[propName];
+  if (!prop || prop.type !== "phone_number") return null;
+  return prop.phone_number ?? null;
+}
+
+export function getEmail(page: NotionPage, propName: string): string | null {
+  const prop = page.properties[propName];
+  if (!prop || prop.type !== "email") return null;
+  return prop.email ?? null;
+}

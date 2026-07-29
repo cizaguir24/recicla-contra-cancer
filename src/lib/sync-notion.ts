@@ -9,6 +9,8 @@ import {
   getDateStart,
   getFormulaNumber,
   getRelationIds,
+  getPhoneNumber,
+  getEmail,
 } from "@/lib/notion";
 
 const ACOPIOS_2026_DATA_SOURCE_ID = "2dcbc6f4-11db-81d0-8cb2-000bb99aafb0";
@@ -37,6 +39,8 @@ export async function sincronizarNotion() {
       const municipio = getRichText(ubicacionPage, "Municipio") || null;
       const tipoContenedor = getSelectName(ubicacionPage, "Tipo de contenedor");
       const decisionReubicacion = getSelectName(ubicacionPage, "Decisión de Reubicación");
+      const numeroCelular = getPhoneNumber(ubicacionPage, "Numero Celular");
+      const correoElectronico = getEmail(ubicacionPage, "Correo electrónico");
 
       const punto = await prisma.puntoAcopio.upsert({
         where: { notionPageId: ubicacionId },
@@ -47,6 +51,8 @@ export async function sincronizarNotion() {
           zona: municipio,
           tipoContenedor,
           decisionReubicacion,
+          numeroCelular,
+          correoElectronico,
           notionPageId: ubicacionId,
         },
         update: {
@@ -54,6 +60,8 @@ export async function sincronizarNotion() {
           zona: municipio,
           tipoContenedor,
           decisionReubicacion,
+          numeroCelular,
+          correoElectronico,
         },
       });
 

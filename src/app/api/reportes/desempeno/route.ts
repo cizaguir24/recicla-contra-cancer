@@ -52,6 +52,8 @@ export async function GET() {
       municipio: punto.zona,
       tipoContenedor: punto.tipoContenedor,
       decisionReubicacion: punto.decisionReubicacion,
+      numeroCelular: punto.numeroCelular,
+      correoElectronico: punto.correoElectronico,
       totalRecolecciones: fechas.length,
       ultimaRecoleccion,
       kgsTapasTotal,

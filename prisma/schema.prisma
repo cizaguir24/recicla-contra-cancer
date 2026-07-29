@@ -46,6 +46,8 @@ model PuntoAcopio {
   activo       Boolean       @default(true)
   tipoContenedor String?     // "Tipo de contenedor" de Notion, ej. "Corazón Alen", "Corazón Tlajomulco", "TapaBox"
   decisionReubicacion String? // "Decisión de Reubicación" de Notion: Sin revisar/Mantener/Dar seguimiento/Reubicar
+  numeroCelular String?      // "Numero Celular" de Notion
+  correoElectronico String?  // "Correo electrónico" de Notion
   notionPageId String?       @unique // id de la página "Ubicación" en Notion, si vino de un sync
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt

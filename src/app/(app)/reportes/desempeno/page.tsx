@@ -10,6 +10,8 @@ type FilaDesempeno = {
   municipio: string | null;
   tipoContenedor: string | null;
   decisionReubicacion: string | null;
+  numeroCelular: string | null;
+  correoElectronico: string | null;
   totalRecolecciones: number;
   ultimaRecoleccion: string | null;
   kgsTapasTotal: number;
@@ -44,6 +46,8 @@ function exportarCSV(filas: FilaDesempeno[]) {
     "Recolecciones últimos 6 meses",
     "Semáforo",
     "Decisión de Reubicación (Notion)",
+    "Número Celular",
+    "Correo electrónico",
   ];
   const lineas = filas.map((f) =>
     [
@@ -57,6 +61,8 @@ function exportarCSV(filas: FilaDesempeno[]) {
       f.conteoVentanaMovil,
       f.semaforo.label,
       f.decisionReubicacion ?? "",
+      f.numeroCelular ?? "",
+      f.correoElectronico ?? "",
     ]
       .map((valor) => `"${String(valor).replace(/"/g, '""')}"`)
       .join(","),
@@ -191,6 +197,8 @@ export default function DesempenoPage() {
                 <th className="px-3 py-2">Últimos 6 meses</th>
                 <th className="px-3 py-2">Semáforo</th>
                 <th className="px-3 py-2">Decisión Reubicación (Notion)</th>
+                <th className="px-3 py-2">Número Celular</th>
+                <th className="px-3 py-2">Correo electrónico</th>
               </tr>
             </thead>
             <tbody>
@@ -212,11 +220,13 @@ export default function DesempenoPage() {
                     </span>
                   </td>
                   <td className="px-3 py-2">{f.decisionReubicacion ?? "—"}</td>
+                  <td className="px-3 py-2">{f.numeroCelular ?? "—"}</td>
+                  <td className="px-3 py-2">{f.correoElectronico ?? "—"}</td>
                 </tr>
               ))}
               {filtradas.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="px-3 py-6 text-center text-foreground/60">
+                  <td colSpan={12} className="px-3 py-6 text-center text-foreground/60">
                     No hay puntos de acopio con estos filtros.
                   </td>
                 </tr>
