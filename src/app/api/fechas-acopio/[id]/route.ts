@@ -24,8 +24,6 @@ export async function PATCH(request: NextRequest, { params }: Context) {
     data: {
       puntoAcopioId: body.puntoAcopioId,
       fecha: new Date(body.fecha),
-      horaInicio: body.horaInicio || null,
-      horaFin: body.horaFin || null,
       estado: body.estado,
       notas: body.notas || null,
     },

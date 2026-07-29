@@ -16,8 +16,6 @@ export async function POST(request: NextRequest) {
     data: {
       puntoAcopioId: body.puntoAcopioId,
       fecha: new Date(body.fecha),
-      horaInicio: body.horaInicio || null,
-      horaFin: body.horaFin || null,
       estado: body.estado || "programada",
       notas: body.notas || null,
     },

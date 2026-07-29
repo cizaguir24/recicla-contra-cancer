@@ -10,8 +10,6 @@ type FechaAcopio = {
   puntoAcopioId: string;
   puntoAcopio: PuntoAcopio;
   fecha: string;
-  horaInicio: string | null;
-  horaFin: string | null;
   estado: string;
   notas: string | null;
   petKg: number | null;
@@ -27,8 +25,6 @@ function exportarCSV(filas: FechaAcopio[]) {
     "Punto de acopio",
     "Zona",
     "Fecha",
-    "Hora inicio",
-    "Hora fin",
     "Estado",
     "Kgs Tapas",
     "Kgs PET",
@@ -41,8 +37,6 @@ function exportarCSV(filas: FechaAcopio[]) {
       f.puntoAcopio.nombre,
       f.puntoAcopio.zona ?? "",
       f.fecha.slice(0, 10),
-      f.horaInicio ?? "",
-      f.horaFin ?? "",
       f.estado,
       f.tapasKg ?? "",
       f.petKg ?? "",
@@ -207,7 +201,6 @@ export default function ReportePuntosAcopioPage() {
                 <th className="px-3 py-2">Punto de acopio</th>
                 <th className="px-3 py-2">Zona</th>
                 <th className="px-3 py-2">Fecha</th>
-                <th className="px-3 py-2">Horario</th>
                 <th className="px-3 py-2">Estado</th>
                 <th className="px-3 py-2">Kgs Tapas</th>
                 <th className="px-3 py-2">Kgs PET</th>
@@ -221,9 +214,6 @@ export default function ReportePuntosAcopioPage() {
                   <td className="px-3 py-2 font-medium">{f.puntoAcopio.nombre}</td>
                   <td className="px-3 py-2">{f.puntoAcopio.zona}</td>
                   <td className="px-3 py-2">{f.fecha.slice(0, 10)}</td>
-                  <td className="px-3 py-2">
-                    {f.horaInicio ?? "—"} - {f.horaFin ?? "—"}
-                  </td>
                   <td className="px-3 py-2 capitalize">{f.estado}</td>
                   <td className="px-3 py-2">{f.tapasKg ?? "—"}</td>
                   <td className="px-3 py-2">{f.petKg ?? "—"}</td>
@@ -233,7 +223,7 @@ export default function ReportePuntosAcopioPage() {
               ))}
               {filtradas.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-3 py-6 text-center text-foreground/60">
+                  <td colSpan={8} className="px-3 py-6 text-center text-foreground/60">
                     No hay resultados con estos filtros.
                   </td>
                 </tr>

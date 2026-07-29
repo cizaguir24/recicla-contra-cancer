@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { MapPin, Phone, Mail, PackageSearch } from "lucide-react";
 
 type ColorSemaforo = "pink" | "amber" | "green";
 
@@ -28,6 +29,12 @@ const DOT_CLASES: Record<ColorSemaforo, string> = {
   pink: "bg-pink-500",
   amber: "bg-amber-500",
   green: "bg-green-500",
+};
+
+const BADGE_CLASES: Record<ColorSemaforo, string> = {
+  pink: "bg-pink-100 text-pink-700",
+  amber: "bg-amber-100 text-amber-700",
+  green: "bg-green-100 text-green-700",
 };
 
 function Punto({ color }: { color: ColorSemaforo }) {
@@ -183,56 +190,83 @@ export default function DesempenoPage() {
       {cargando ? (
         <p className="text-sm text-foreground/60">Cargando...</p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-white/50 bg-white/40 backdrop-blur-md">
-          <table className="w-full text-sm">
-            <thead className="bg-white/50 text-left">
-              <tr>
-                <th className="px-3 py-2">Punto de acopio</th>
-                <th className="px-3 py-2">Municipio</th>
-                <th className="px-3 py-2">Contenedor</th>
-                <th className="px-3 py-2">Total</th>
-                <th className="px-3 py-2">Última recolección</th>
-                <th className="px-3 py-2">Kgs Tapas</th>
-                <th className="px-3 py-2">Frecuencia</th>
-                <th className="px-3 py-2">Últimos 6 meses</th>
-                <th className="px-3 py-2">Semáforo</th>
-                <th className="px-3 py-2">Decisión Reubicación (Notion)</th>
-                <th className="px-3 py-2">Número Celular</th>
-                <th className="px-3 py-2">Correo electrónico</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtradas.map((f) => (
-                <tr key={f.id} className="border-t border-white/50">
-                  <td className="px-3 py-2 font-medium">{f.nombre}</td>
-                  <td className="px-3 py-2">{f.municipio ?? "—"}</td>
-                  <td className="px-3 py-2">{f.tipoContenedor ?? "—"}</td>
-                  <td className="px-3 py-2">{f.totalRecolecciones}</td>
-                  <td className="px-3 py-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {filtradas.map((f) => (
+            <div
+              key={f.id}
+              className="rounded-xl border border-white/60 bg-white/40 p-4 shadow-lg shadow-black/5 backdrop-blur-md backdrop-saturate-150"
+            >
+              <div className="mb-1 flex items-start justify-between gap-2">
+                <h2 className="font-semibold text-[var(--foreground)]">{f.nombre}</h2>
+                <span
+                  className={`flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-medium ${BADGE_CLASES[f.semaforo.color]}`}
+                >
+                  <Punto color={f.semaforo.color} /> {f.semaforo.label}
+                </span>
+              </div>
+
+              <p className="mb-3 flex items-center gap-1 text-xs text-[var(--muted)]">
+                <MapPin className="h-3 w-3 shrink-0" />
+                {f.municipio ?? "Sin municipio"}
+                {f.tipoContenedor ? ` · ${f.tipoContenedor}` : ""}
+              </p>
+
+              <div className="mb-3 grid grid-cols-2 gap-x-3 gap-y-2 rounded-lg bg-white/40 p-3 text-xs">
+                <div>
+                  <p className="text-[var(--muted)]">Recolecciones</p>
+                  <p className="font-medium text-[var(--foreground)]">{f.totalRecolecciones}</p>
+                </div>
+                <div>
+                  <p className="text-[var(--muted)]">Últimos 6 meses</p>
+                  <p className="font-medium text-[var(--foreground)]">{f.conteoVentanaMovil}</p>
+                </div>
+                <div>
+                  <p className="text-[var(--muted)]">Kgs Tapas</p>
+                  <p className="font-medium text-[var(--foreground)]">{f.kgsTapasTotal.toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-[var(--muted)]">Frecuencia</p>
+                  <p className="font-medium text-[var(--foreground)]">{f.frecuencia}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-[var(--muted)]">Última recolección</p>
+                  <p className="font-medium text-[var(--foreground)]">
                     {f.ultimaRecoleccion ? f.ultimaRecoleccion.slice(0, 10) : "—"}
-                  </td>
-                  <td className="px-3 py-2">{f.kgsTapasTotal.toFixed(2)}</td>
-                  <td className="px-3 py-2">{f.frecuencia}</td>
-                  <td className="px-3 py-2">{f.conteoVentanaMovil}</td>
-                  <td className="px-3 py-2">
-                    <span className="flex items-center gap-1.5">
-                      <Punto color={f.semaforo.color} /> {f.semaforo.label}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2">{f.decisionReubicacion ?? "—"}</td>
-                  <td className="px-3 py-2">{f.numeroCelular ?? "—"}</td>
-                  <td className="px-3 py-2">{f.correoElectronico ?? "—"}</td>
-                </tr>
-              ))}
-              {filtradas.length === 0 && (
-                <tr>
-                  <td colSpan={12} className="px-3 py-6 text-center text-foreground/60">
-                    No hay puntos de acopio con estos filtros.
-                  </td>
-                </tr>
+                  </p>
+                </div>
+              </div>
+
+              {f.decisionReubicacion && (
+                <p className="mb-2 flex items-center gap-1 text-xs text-[var(--muted)]">
+                  <PackageSearch className="h-3 w-3 shrink-0" />
+                  Reubicación (Notion): <span className="font-medium text-[var(--foreground)]">{f.decisionReubicacion}</span>
+                </p>
               )}
-            </tbody>
-          </table>
+
+              {(f.numeroCelular || f.correoElectronico) && (
+                <div className="flex flex-wrap items-center gap-3 border-t border-[var(--border)] pt-2 text-xs text-[var(--muted)]">
+                  {f.numeroCelular && (
+                    <span className="flex items-center gap-1">
+                      <Phone className="h-3 w-3 shrink-0" /> {f.numeroCelular}
+                    </span>
+                  )}
+                  {f.correoElectronico && (
+                    <span className="flex items-center gap-1">
+                      <Mail className="h-3 w-3 shrink-0" /> {f.correoElectronico}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+          {filtradas.length === 0 && (
+            <div className="col-span-full flex min-h-[30vh] flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-white/60 bg-white/20 text-center backdrop-blur-sm">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--brand-blue-light)]">
+                <PackageSearch className="h-6 w-6 text-[var(--brand-blue-dark)]" />
+              </div>
+              <p className="text-sm text-[var(--muted)]">No hay puntos de acopio con estos filtros.</p>
+            </div>
+          )}
         </div>
       )}
     </div>

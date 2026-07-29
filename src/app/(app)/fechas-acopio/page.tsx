@@ -10,8 +10,6 @@ type FechaAcopio = {
   puntoAcopioId: string;
   puntoAcopio: PuntoAcopio;
   fecha: string;
-  horaInicio: string | null;
-  horaFin: string | null;
   estado: string;
   notas: string | null;
 };
@@ -19,8 +17,6 @@ type FechaAcopio = {
 const FORM_INICIAL = {
   puntoAcopioId: "",
   fecha: "",
-  horaInicio: "",
-  horaFin: "",
   estado: "programada",
   notas: "",
 };
@@ -62,8 +58,6 @@ export default function FechasAcopioPage() {
     setForm({
       puntoAcopioId: f.puntoAcopioId,
       fecha: f.fecha.slice(0, 10),
-      horaInicio: f.horaInicio ?? "",
-      horaFin: f.horaFin ?? "",
       estado: f.estado,
       notas: f.notas ?? "",
     });
@@ -141,24 +135,6 @@ export default function FechasAcopioPage() {
             />
           </label>
           <label className="space-y-1 text-sm">
-            <span className="font-medium">Hora inicio</span>
-            <input
-              type="time"
-              value={form.horaInicio}
-              onChange={(e) => setForm({ ...form, horaInicio: e.target.value })}
-              className="input"
-            />
-          </label>
-          <label className="space-y-1 text-sm">
-            <span className="font-medium">Hora fin</span>
-            <input
-              type="time"
-              value={form.horaFin}
-              onChange={(e) => setForm({ ...form, horaFin: e.target.value })}
-              className="input"
-            />
-          </label>
-          <label className="space-y-1 text-sm">
             <span className="font-medium">Estado</span>
             <select
               value={form.estado}
@@ -207,7 +183,6 @@ export default function FechasAcopioPage() {
               <tr>
                 <th className="px-3 py-2">Punto de acopio</th>
                 <th className="px-3 py-2">Fecha</th>
-                <th className="px-3 py-2">Horario</th>
                 <th className="px-3 py-2">Estado</th>
                 <th className="px-3 py-2">Notas</th>
                 <th className="px-3 py-2"></th>
@@ -218,9 +193,6 @@ export default function FechasAcopioPage() {
                 <tr key={f.id} className="border-t border-white/50">
                   <td className="px-3 py-2 font-medium">{f.puntoAcopio.nombre}</td>
                   <td className="px-3 py-2">{f.fecha.slice(0, 10)}</td>
-                  <td className="px-3 py-2">
-                    {f.horaInicio ?? "—"} - {f.horaFin ?? "—"}
-                  </td>
                   <td className="px-3 py-2 capitalize">{f.estado}</td>
                   <td className="px-3 py-2">{f.notas}</td>
                   <td className="px-3 py-2 whitespace-nowrap">
@@ -245,7 +217,7 @@ export default function FechasAcopioPage() {
               ))}
               {fechas.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-3 py-6 text-center text-foreground/60">
+                  <td colSpan={5} className="px-3 py-6 text-center text-foreground/60">
                     No hay fechas de acopio registradas.
                   </td>
                 </tr>
