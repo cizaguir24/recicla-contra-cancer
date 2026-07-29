@@ -1,9 +1,21 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { MapPin, Phone, Mail, PackageSearch } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { MapPin, Phone, Mail, PackageSearch, Pencil, X } from "lucide-react";
+import { usePermisos } from "@/lib/role-context";
 
 type ColorSemaforo = "pink" | "amber" | "green";
+
+const OPCIONES_TIPO_CONTENEDOR = [
+  "Centro de Acopio",
+  "Corazón Alen",
+  "TapaBox",
+  "Corazón Tlajomulco",
+  "PET",
+  "Contenedor Propio",
+];
+
+const OPCIONES_DECISION_REUBICACION = ["Sin revisar", "Mantener", "Dar seguimiento", "Reubicar"];
 
 type FilaDesempeno = {
   id: string;
@@ -85,21 +97,66 @@ function exportarCSV(filas: FilaDesempeno[]) {
   URL.revokeObjectURL(url);
 }
 
+const FORM_EDICION_VACIO = {
+  nombre: "",
+  zona: "",
+  tipoContenedor: "",
+  decisionReubicacion: "",
+  numeroCelular: "",
+  correoElectronico: "",
+};
+
 export default function DesempenoPage() {
+  const { puntosAcopio: esAdmin } = usePermisos();
   const [filas, setFilas] = useState<FilaDesempeno[]>([]);
   const [cargando, setCargando] = useState(true);
   const [filtroContenedor, setFiltroContenedor] = useState("");
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [form, setForm] = useState(FORM_EDICION_VACIO);
+  const [guardando, setGuardando] = useState(false);
+
+  const cargar = useCallback(async () => {
+    setCargando(true);
+    const res = await fetch("/api/reportes/desempeno");
+    const data = await res.json();
+    setFilas(data.filas);
+    setCargando(false);
+  }, []);
 
   useEffect(() => {
-    async function cargar() {
-      setCargando(true);
-      const res = await fetch("/api/reportes/desempeno");
-      const data = await res.json();
-      setFilas(data.filas);
-      setCargando(false);
-    }
     cargar();
-  }, []);
+  }, [cargar]);
+
+  function abrirEdicion(f: FilaDesempeno) {
+    setEditandoId(f.id);
+    setForm({
+      nombre: f.nombre,
+      zona: f.municipio ?? "",
+      tipoContenedor: f.tipoContenedor ?? "",
+      decisionReubicacion: f.decisionReubicacion ?? "",
+      numeroCelular: f.numeroCelular ?? "",
+      correoElectronico: f.correoElectronico ?? "",
+    });
+  }
+
+  function cerrarEdicion() {
+    setEditandoId(null);
+    setForm(FORM_EDICION_VACIO);
+  }
+
+  async function guardarEdicion(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editandoId) return;
+    setGuardando(true);
+    await fetch(`/api/puntos-acopio/${editandoId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    setGuardando(false);
+    cerrarEdicion();
+    await cargar();
+  }
 
   const contenedores = useMemo(() => {
     const nombres = new Set(filas.map((f) => f.tipoContenedor).filter((c): c is string => !!c));
@@ -198,11 +255,22 @@ export default function DesempenoPage() {
             >
               <div className="mb-1 flex items-start justify-between gap-2">
                 <h2 className="font-semibold text-[var(--foreground)]">{f.nombre}</h2>
-                <span
-                  className={`flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-medium ${BADGE_CLASES[f.semaforo.color]}`}
-                >
-                  <Punto color={f.semaforo.color} /> {f.semaforo.label}
-                </span>
+                <div className="flex shrink-0 items-center gap-2">
+                  <span
+                    className={`flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-medium ${BADGE_CLASES[f.semaforo.color]}`}
+                  >
+                    <Punto color={f.semaforo.color} /> {f.semaforo.label}
+                  </span>
+                  {esAdmin && (
+                    <button
+                      onClick={() => abrirEdicion(f)}
+                      title="Editar"
+                      className="rounded p-1 text-[var(--muted)] hover:bg-white/60 hover:text-[var(--brand-blue)]"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
 
               <p className="mb-3 flex items-center gap-1 text-xs text-[var(--muted)]">
@@ -267,6 +335,96 @@ export default function DesempenoPage() {
               <p className="text-sm text-[var(--muted)]">No hay puntos de acopio con estos filtros.</p>
             </div>
           )}
+        </div>
+      )}
+
+      {editandoId && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/20 px-4 py-8 backdrop-blur-sm">
+          <div className="w-full max-w-md max-h-full overflow-y-auto rounded-2xl border border-white/50 bg-white/70 p-6 shadow-2xl backdrop-blur-xl backdrop-saturate-150">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Editar punto de acopio</h2>
+              <button onClick={cerrarEdicion}>
+                <X className="h-5 w-5 text-[var(--muted)]" />
+              </button>
+            </div>
+            <form onSubmit={guardarEdicion} className="space-y-3">
+              <label className="block text-sm">
+                <span className="mb-1 block font-medium">Nombre</span>
+                <input
+                  required
+                  value={form.nombre}
+                  onChange={(e) => setForm((f) => ({ ...f, nombre: e.target.value }))}
+                  className="input"
+                />
+              </label>
+              <label className="block text-sm">
+                <span className="mb-1 block font-medium">Municipio</span>
+                <input
+                  value={form.zona}
+                  onChange={(e) => setForm((f) => ({ ...f, zona: e.target.value }))}
+                  className="input"
+                />
+              </label>
+              <label className="block text-sm">
+                <span className="mb-1 block font-medium">Tipo de contenedor</span>
+                <select
+                  value={form.tipoContenedor}
+                  onChange={(e) => setForm((f) => ({ ...f, tipoContenedor: e.target.value }))}
+                  className="input"
+                >
+                  <option value="">Sin especificar</option>
+                  {OPCIONES_TIPO_CONTENEDOR.map((o) => (
+                    <option key={o} value={o}>
+                      {o}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block text-sm">
+                <span className="mb-1 block font-medium">Decisión de Reubicación</span>
+                <select
+                  value={form.decisionReubicacion}
+                  onChange={(e) => setForm((f) => ({ ...f, decisionReubicacion: e.target.value }))}
+                  className="input"
+                >
+                  <option value="">Sin especificar</option>
+                  {OPCIONES_DECISION_REUBICACION.map((o) => (
+                    <option key={o} value={o}>
+                      {o}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block text-sm">
+                <span className="mb-1 block font-medium">Número Celular</span>
+                <input
+                  value={form.numeroCelular}
+                  onChange={(e) => setForm((f) => ({ ...f, numeroCelular: e.target.value }))}
+                  className="input"
+                />
+              </label>
+              <label className="block text-sm">
+                <span className="mb-1 block font-medium">Correo electrónico</span>
+                <input
+                  type="email"
+                  value={form.correoElectronico}
+                  onChange={(e) => setForm((f) => ({ ...f, correoElectronico: e.target.value }))}
+                  className="input"
+                />
+              </label>
+              <p className="text-[11px] text-[var(--muted)]">
+                Si este punto se sincroniza con Notion, estos campos pueden sobrescribirse en la
+                próxima sincronización.
+              </p>
+              <button
+                type="submit"
+                disabled={guardando}
+                className="w-full rounded-xl bg-[var(--brand-blue)] py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+              >
+                {guardando ? "Guardando…" : "Guardar cambios"}
+              </button>
+            </form>
+          </div>
         </div>
       )}
     </div>

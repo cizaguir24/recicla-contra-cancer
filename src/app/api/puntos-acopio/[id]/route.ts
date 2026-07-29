@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@/generated/prisma/client";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -16,18 +17,23 @@ export async function PATCH(request: NextRequest, { params }: Context) {
   const { id } = await params;
   const body = await request.json();
 
-  const punto = await prisma.puntoAcopio.update({
-    where: { id },
-    data: {
-      nombre: body.nombre,
-      direccion: body.direccion,
-      zona: body.zona || null,
-      materiales: body.materiales,
-      responsable: body.responsable || null,
-      contacto: body.contacto || null,
-      activo: body.activo,
-    },
-  });
+  // Solo se incluyen las llaves presentes en el body, para soportar
+  // actualizaciones parciales (ej. desde la tarjeta de Desempeño) sin
+  // borrar campos que ese formulario no envía.
+  const data: Prisma.PuntoAcopioUpdateInput = {};
+  if ("nombre" in body) data.nombre = body.nombre;
+  if ("direccion" in body) data.direccion = body.direccion;
+  if ("zona" in body) data.zona = body.zona || null;
+  if ("materiales" in body) data.materiales = body.materiales;
+  if ("responsable" in body) data.responsable = body.responsable || null;
+  if ("contacto" in body) data.contacto = body.contacto || null;
+  if ("activo" in body) data.activo = body.activo;
+  if ("tipoContenedor" in body) data.tipoContenedor = body.tipoContenedor || null;
+  if ("decisionReubicacion" in body) data.decisionReubicacion = body.decisionReubicacion || null;
+  if ("numeroCelular" in body) data.numeroCelular = body.numeroCelular || null;
+  if ("correoElectronico" in body) data.correoElectronico = body.correoElectronico || null;
+
+  const punto = await prisma.puntoAcopio.update({ where: { id }, data });
 
   return NextResponse.json(punto);
 }
