@@ -10,6 +10,7 @@ const SELECT_PAPELERA = {
   dirigidoA: true,
   nombreFirmante: true,
   puesto: true,
+  estatus: true,
   eliminadoAt: true,
   puntoAcopio: { select: { id: true, nombre: true, zona: true } },
 } as const;

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Search, FileText, Eye, Download, Pencil, Copy, XCircle, PackageSearch, Trash2 } from "lucide-react";
 import { usePermisos } from "@/lib/role-context";
-import { ESTATUS_LABEL } from "@/lib/manifiestos";
+import { ESTATUS_LABEL, ESTATUS_BADGE } from "@/lib/manifiestos";
 
 type PuntoAcopioMini = { id: string; nombre: string; zona: string | null };
 
@@ -24,12 +24,6 @@ type ManifiestoItem = {
   generadoAt: string | null;
   createdAt: string;
   puntoAcopio: PuntoAcopioMini;
-};
-
-const ESTATUS_BADGE: Record<string, string> = {
-  borrador: "bg-gray-100 text-gray-600",
-  generado: "bg-green-100 text-green-700",
-  cancelado: "bg-red-100 text-red-600",
 };
 
 function fmt(d: string) {
@@ -80,7 +74,7 @@ export default function ManifiestosPage() {
     const mensaje =
       m.estatus === "generado"
         ? "¿Cancelar este manifiesto? El PDF generado se conserva para trazabilidad."
-        : "¿Eliminar este borrador de manifiesto? Se moverá a la papelera y podrás restaurarlo durante 15 días.";
+        : "¿Eliminar este manifiesto? Se moverá a la papelera y podrás restaurarlo durante 15 días.";
     if (!confirm(mensaje)) return;
     await fetch(`/api/manifiestos/${m.id}`, { method: "DELETE" });
     await cargar();
@@ -241,7 +235,7 @@ export default function ManifiestosPage() {
                     <Copy className="h-3.5 w-3.5" /> Duplicar
                   </button>
                 )}
-                {esAdmin && m.estatus !== "cancelado" && (
+                {esAdmin && (
                   <button
                     onClick={() => cancelarOEliminar(m)}
                     className="flex items-center gap-1 text-[var(--muted)] hover:text-red-500"

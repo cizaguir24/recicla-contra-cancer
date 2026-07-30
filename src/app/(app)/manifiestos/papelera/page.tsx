@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, RotateCcw, Trash2 } from "lucide-react";
-import { DIAS_RETENCION_PAPELERA } from "@/lib/manifiestos";
+import { DIAS_RETENCION_PAPELERA, ESTATUS_LABEL, ESTATUS_BADGE } from "@/lib/manifiestos";
 
 type PuntoAcopioMini = { id: string; nombre: string; zona: string | null };
 
@@ -15,6 +15,7 @@ type ManifiestoPapelera = {
   dirigidoA: string;
   nombreFirmante: string;
   puesto: string;
+  estatus: "borrador" | "generado" | "cancelado";
   eliminadoAt: string;
   puntoAcopio: PuntoAcopioMini;
 };
@@ -62,7 +63,7 @@ export default function PapeleraManifiestosPage() {
         </Link>
         <h1 className="mt-2 text-xl font-semibold">Papelera de Manifiestos</h1>
         <p className="text-sm text-foreground/60">
-          Los borradores eliminados se conservan aquí {DIAS_RETENCION_PAPELERA} días antes de
+          Los manifiestos eliminados se conservan aquí {DIAS_RETENCION_PAPELERA} días antes de
           borrarse definitivamente.
         </p>
       </div>
@@ -86,7 +87,14 @@ export default function PapeleraManifiestosPage() {
                 className="rounded-xl border border-white/60 bg-white/40 p-4 shadow-lg shadow-black/5 backdrop-blur-md backdrop-saturate-150"
               >
                 <div className="mb-1 flex items-start justify-between gap-2">
-                  <h2 className="font-semibold text-[var(--foreground)]">{m.puntoAcopio.nombre}</h2>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="font-semibold text-[var(--foreground)]">{m.puntoAcopio.nombre}</h2>
+                    <span
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${ESTATUS_BADGE[m.estatus]}`}
+                    >
+                      {ESTATUS_LABEL[m.estatus]}
+                    </span>
+                  </div>
                   <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">
                     {restantes} día{restantes === 1 ? "" : "s"} restante{restantes === 1 ? "" : "s"}
                   </span>

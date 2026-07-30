@@ -37,6 +37,12 @@ export const ESTATUS_LABEL: Record<string, string> = {
   cancelado: "Cancelado",
 };
 
-// Un borrador eliminado se conserva en la papelera este tiempo antes de purgarse
-// definitivamente.
+export const ESTATUS_BADGE: Record<string, string> = {
+  borrador: "bg-gray-100 text-gray-600",
+  generado: "bg-green-100 text-green-700",
+  cancelado: "bg-red-100 text-red-600",
+};
+
+// Un borrador o un manifiesto cancelado eliminado se conserva en la papelera
+// este tiempo antes de purgarse definitivamente.
 export const DIAS_RETENCION_PAPELERA = 15;
