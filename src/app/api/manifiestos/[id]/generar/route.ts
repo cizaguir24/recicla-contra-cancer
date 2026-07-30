@@ -72,6 +72,7 @@ export async function POST(_request: NextRequest, { params }: Context) {
   const buffer = await renderToBuffer(
     ManifiestoDocument({
       dirigidoA: manifiesto.dirigidoA,
+      dirigidoAPuesto: manifiesto.dirigidoAPuesto,
       fechaManifiesto: manifiesto.fechaManifiesto,
       fechaInicioPeriodo: manifiesto.fechaInicioPeriodo,
       fechaFinPeriodo: manifiesto.fechaFinPeriodo,

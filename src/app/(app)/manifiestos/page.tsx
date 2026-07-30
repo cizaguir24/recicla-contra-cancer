@@ -16,6 +16,7 @@ type ManifiestoItem = {
   fechaInicioPeriodo: string;
   fechaFinPeriodo: string;
   dirigidoA: string;
+  dirigidoAPuesto: string;
   nombreFirmante: string;
   puesto: string;
   totalKg: number | null;
@@ -166,7 +167,10 @@ export default function ManifiestosPage() {
                 </span>
               </div>
               {m.dirigidoA && (
-                <p className="mb-3 text-xs text-[var(--muted)]">Dirigido a: {m.dirigidoA}</p>
+                <p className="mb-3 text-xs text-[var(--muted)]">
+                  Dirigido a: {m.dirigidoA}
+                  {m.dirigidoAPuesto ? ` · ${m.dirigidoAPuesto}` : ""}
+                </p>
               )}
 
               <div className="mb-3 grid grid-cols-2 gap-x-3 gap-y-2 rounded-lg bg-white/40 p-3 text-xs">

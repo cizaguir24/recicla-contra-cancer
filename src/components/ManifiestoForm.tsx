@@ -27,6 +27,7 @@ type ManifiestoDetalle = {
   fechaInicioPeriodo: string;
   fechaFinPeriodo: string;
   dirigidoA: string;
+  dirigidoAPuesto: string;
   nombreFirmante: string;
   puesto: string;
   texto: string;
@@ -48,6 +49,7 @@ const FORM_VACIO = {
   fechaInicioPeriodo: "",
   fechaFinPeriodo: "",
   dirigidoA: "",
+  dirigidoAPuesto: "",
   nombreFirmante: "",
   puesto: "",
   texto: "",
@@ -103,6 +105,7 @@ export default function ManifiestoForm({
           fechaInicioPeriodo: m.fechaInicioPeriodo.slice(0, 10),
           fechaFinPeriodo: m.fechaFinPeriodo.slice(0, 10),
           dirigidoA: m.dirigidoA,
+          dirigidoAPuesto: m.dirigidoAPuesto,
           nombreFirmante: m.nombreFirmante,
           puesto: m.puesto,
           texto: m.texto,
@@ -364,20 +367,31 @@ export default function ManifiestoForm({
       </div>
 
       <div className="space-y-3 rounded-xl border border-white/50 bg-white/40 backdrop-blur-md p-4">
-        <label className="block space-y-1 text-sm">
-          <span className="font-medium">Profesión y nombre de la persona a quien va dirigido</span>
-          <input
-            value={form.dirigidoA}
-            onChange={(e) => setForm({ ...form, dirigidoA: e.target.value })}
-            placeholder="Lic. María González Ramírez"
-            disabled={soloLectura}
-            className="input"
-          />
-          <p className="text-[11px] text-[var(--muted)]">
-            Incluye el tratamiento o profesión si aplica (Lic., Ing., Dr., Dra., Mtro., Mtra., C.P.,
-            Arq.). Aparece en el encabezado del manifiesto.
-          </p>
-        </label>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <label className="space-y-1 text-sm">
+            <span className="font-medium">Profesión y nombre de la persona a quien va dirigido</span>
+            <input
+              value={form.dirigidoA}
+              onChange={(e) => setForm({ ...form, dirigidoA: e.target.value })}
+              placeholder="Lic. María González Ramírez"
+              disabled={soloLectura}
+              className="input"
+            />
+          </label>
+          <label className="space-y-1 text-sm">
+            <span className="font-medium">Puesto</span>
+            <input
+              value={form.dirigidoAPuesto}
+              onChange={(e) => setForm({ ...form, dirigidoAPuesto: e.target.value })}
+              disabled={soloLectura}
+              className="input"
+            />
+          </label>
+        </div>
+        <p className="text-[11px] text-[var(--muted)]">
+          Incluye el tratamiento o profesión si aplica (Lic., Ing., Dr., Dra., Mtro., Mtra., C.P.,
+          Arq.). Aparecen en el encabezado del manifiesto.
+        </p>
 
         <label className="block space-y-1 text-sm">
           <span className="font-medium">Texto</span>

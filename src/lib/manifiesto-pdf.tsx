@@ -12,7 +12,8 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 16, fontFamily: "Helvetica-Bold", color: "#2563eb" },
   headerSubtitle: { fontSize: 9, color: "#6b7280", marginTop: 2 },
-  dirigidoA: { fontSize: 12, fontFamily: "Helvetica-Bold", marginBottom: 12 },
+  dirigidoABlock: { marginBottom: 12 },
+  dirigidoA: { fontSize: 12, fontFamily: "Helvetica-Bold" },
   fechaEmision: { fontSize: 9, color: "#6b7280", marginBottom: 16 },
   section: { marginBottom: 14 },
   sectionTitle: { fontSize: 10, fontFamily: "Helvetica-Bold", marginBottom: 4, color: "#6b7280" },
@@ -83,6 +84,7 @@ function fmtKg(n: number) {
 
 export type ManifiestoDocumentProps = {
   dirigidoA: string;
+  dirigidoAPuesto: string;
   fechaManifiesto: Date | string;
   fechaInicioPeriodo: Date | string;
   fechaFinPeriodo: Date | string;
@@ -100,6 +102,7 @@ export type ManifiestoDocumentProps = {
 
 export function ManifiestoDocument({
   dirigidoA,
+  dirigidoAPuesto,
   fechaManifiesto,
   fechaInicioPeriodo,
   fechaFinPeriodo,
@@ -124,8 +127,11 @@ export function ManifiestoDocument({
           <Text style={styles.headerSubtitle}>Un proyecto original de Cómplices AC</Text>
         </View>
 
-        {/* 2. Profesión y nombre de la persona a quien va dirigido */}
-        {dirigidoA && <Text style={styles.dirigidoA}>{dirigidoA}</Text>}
+        {/* 2. Profesión y nombre de la persona a quien va dirigido, y su puesto */}
+        <View style={styles.dirigidoABlock}>
+          {dirigidoA && <Text style={styles.dirigidoA}>{dirigidoA}</Text>}
+          {dirigidoAPuesto && <Text style={styles.label}>{dirigidoAPuesto}</Text>}
+        </View>
 
         {/* 3. Nombre del benefactor o empresa */}
         <View style={styles.section}>

@@ -10,6 +10,7 @@ const SELECT_DETALLE = {
   fechaInicioPeriodo: true,
   fechaFinPeriodo: true,
   dirigidoA: true,
+  dirigidoAPuesto: true,
   nombreFirmante: true,
   puesto: true,
   texto: true,
@@ -71,6 +72,7 @@ export async function PATCH(request: NextRequest, { params }: Context) {
   if ("fechaInicioPeriodo" in body) data.fechaInicioPeriodo = fechaInicioPeriodo;
   if ("fechaFinPeriodo" in body) data.fechaFinPeriodo = fechaFinPeriodo;
   if ("dirigidoA" in body) data.dirigidoA = body.dirigidoA;
+  if ("dirigidoAPuesto" in body) data.dirigidoAPuesto = body.dirigidoAPuesto;
   if ("nombreFirmante" in body) data.nombreFirmante = body.nombreFirmante;
   if ("puesto" in body) data.puesto = body.puesto;
   if ("texto" in body) data.texto = body.texto;

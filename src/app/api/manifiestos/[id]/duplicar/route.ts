@@ -18,6 +18,7 @@ export async function POST(_request: NextRequest, { params }: Context) {
       fechaFinPeriodo: original.fechaFinPeriodo,
       titulo: "",
       dirigidoA: original.dirigidoA,
+      dirigidoAPuesto: original.dirigidoAPuesto,
       nombreFirmante: original.nombreFirmante,
       puesto: original.puesto,
       texto: original.texto,
