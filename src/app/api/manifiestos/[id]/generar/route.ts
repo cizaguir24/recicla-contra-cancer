@@ -13,7 +13,7 @@ export async function POST(_request: NextRequest, { params }: Context) {
     where: { id },
     include: { puntoAcopio: true },
   });
-  if (!manifiesto) {
+  if (!manifiesto || manifiesto.eliminadoAt) {
     return NextResponse.json({ error: "No encontrado" }, { status: 404 });
   }
   if (manifiesto.estatus !== "borrador") {

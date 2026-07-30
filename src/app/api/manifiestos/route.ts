@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
 
   const manifiestos = await prisma.manifiesto.findMany({
     where: {
+      eliminadoAt: null,
       ...(puntoAcopioId && { puntoAcopioId }),
       ...(estatus && { estatus }),
       ...((desde || hasta) && {

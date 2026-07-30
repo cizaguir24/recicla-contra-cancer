@@ -19,6 +19,7 @@ const SELECT_DETALLE = {
   totalKg: true,
   estatus: true,
   generadoAt: true,
+  eliminadoAt: true,
   createdAt: true,
   updatedAt: true,
   puntoAcopio: {
@@ -32,7 +33,7 @@ export async function GET(_request: NextRequest, { params }: Context) {
     where: { id },
     select: SELECT_DETALLE,
   });
-  if (!manifiesto) {
+  if (!manifiesto || manifiesto.eliminadoAt) {
     return NextResponse.json({ error: "No encontrado" }, { status: 404 });
   }
   return NextResponse.json(manifiesto);
@@ -43,7 +44,7 @@ export async function PATCH(request: NextRequest, { params }: Context) {
   const body = await request.json();
 
   const actual = await prisma.manifiesto.findUnique({ where: { id } });
-  if (!actual) {
+  if (!actual || actual.eliminadoAt) {
     return NextResponse.json({ error: "No encontrado" }, { status: 404 });
   }
   if (actual.estatus !== "borrador") {
@@ -90,7 +91,7 @@ export async function PATCH(request: NextRequest, { params }: Context) {
 export async function DELETE(_request: NextRequest, { params }: Context) {
   const { id } = await params;
   const actual = await prisma.manifiesto.findUnique({ where: { id } });
-  if (!actual) {
+  if (!actual || actual.eliminadoAt) {
     return NextResponse.json({ error: "No encontrado" }, { status: 404 });
   }
 
@@ -98,7 +99,8 @@ export async function DELETE(_request: NextRequest, { params }: Context) {
     // Un manifiesto generado es un documento oficial: se cancela, no se borra.
     await prisma.manifiesto.update({ where: { id }, data: { estatus: "cancelado" } });
   } else {
-    await prisma.manifiesto.delete({ where: { id } });
+    // Un borrador se mueve a la papelera; se purga definitivamente a los 15 días.
+    await prisma.manifiesto.update({ where: { id }, data: { eliminadoAt: new Date() } });
   }
   return NextResponse.json({ ok: true });
 }

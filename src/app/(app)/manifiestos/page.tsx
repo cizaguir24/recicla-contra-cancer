@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Search, FileText, Eye, Download, Pencil, Copy, XCircle, PackageSearch } from "lucide-react";
+import { Search, FileText, Eye, Download, Pencil, Copy, XCircle, PackageSearch, Trash2 } from "lucide-react";
 import { usePermisos } from "@/lib/role-context";
 import { ESTATUS_LABEL } from "@/lib/manifiestos";
 
@@ -80,7 +80,7 @@ export default function ManifiestosPage() {
     const mensaje =
       m.estatus === "generado"
         ? "¿Cancelar este manifiesto? El PDF generado se conserva para trazabilidad."
-        : "¿Eliminar este borrador de manifiesto?";
+        : "¿Eliminar este borrador de manifiesto? Se moverá a la papelera y podrás restaurarlo durante 15 días.";
     if (!confirm(mensaje)) return;
     await fetch(`/api/manifiestos/${m.id}`, { method: "DELETE" });
     await cargar();
@@ -101,12 +101,20 @@ export default function ManifiestosPage() {
           </p>
         </div>
         {esAdmin && (
-          <Link
-            href="/manifiestos/nuevo"
-            className="rounded-xl bg-[var(--brand-blue)] px-3 py-2 text-sm font-medium text-[var(--accent-foreground)] shadow-sm"
-          >
-            + Crear manifiesto
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/manifiestos/papelera"
+              className="flex items-center gap-1.5 rounded-xl border border-white/60 bg-white/40 px-3 py-2 text-sm font-medium text-[var(--foreground)] hover:bg-white/60"
+            >
+              <Trash2 className="h-4 w-4" /> Papelera
+            </Link>
+            <Link
+              href="/manifiestos/nuevo"
+              className="rounded-xl bg-[var(--brand-blue)] px-3 py-2 text-sm font-medium text-[var(--accent-foreground)] shadow-sm"
+            >
+              + Crear manifiesto
+            </Link>
+          </div>
         )}
       </div>
 

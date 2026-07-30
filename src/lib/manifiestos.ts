@@ -36,3 +36,7 @@ export const ESTATUS_LABEL: Record<string, string> = {
   generado: "Generado",
   cancelado: "Cancelado",
 };
+
+// Un borrador eliminado se conserva en la papelera este tiempo antes de purgarse
+// definitivamente.
+export const DIAS_RETENCION_PAPELERA = 15;

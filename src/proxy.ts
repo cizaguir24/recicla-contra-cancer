@@ -23,6 +23,17 @@ export default auth((req) => {
     const permisos = req.auth?.user?.permisos;
     const isWrite = ["POST", "PUT", "PATCH", "DELETE"].includes(req.method);
 
+    // La papelera de Manifiestos expone borradores eliminados: solo lectura o
+    // escritura, siempre requiere el permiso, sin importar el método.
+    if (
+      isApiRoute &&
+      pathname.startsWith("/api/manifiestos/") &&
+      (pathname.startsWith("/api/manifiestos/papelera") || pathname.endsWith("/restaurar")) &&
+      !permisos?.manifiestos
+    ) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+    }
+
     if (isApiRoute && isWrite) {
       const bloqueado =
         ((pathname.startsWith("/api/usuarios") ||
@@ -41,6 +52,10 @@ export default auth((req) => {
 
     if (pathname.startsWith("/configuracion") && !permisos?.configuracion) {
       return NextResponse.redirect(new URL("/reportes/puntos-acopio", req.nextUrl));
+    }
+
+    if (pathname.startsWith("/manifiestos/papelera") && !permisos?.manifiestos) {
+      return NextResponse.redirect(new URL("/manifiestos", req.nextUrl));
     }
   }
 });
