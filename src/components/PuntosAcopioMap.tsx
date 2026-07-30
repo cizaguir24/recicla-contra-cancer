@@ -22,15 +22,29 @@ export type PuntoMapa = {
   lng: number | null;
 };
 
-export default function PuntosAcopioMap({ puntos }: { puntos: PuntoMapa[] }) {
+export default function PuntosAcopioMap({
+  puntos,
+  className = "h-80 sm:h-96",
+  zoom = 10,
+  mensajeVacio = "Ningún punto de acopio visible tiene ubicación geocodificada todavía.",
+  scrollWheelZoom = true,
+}: {
+  puntos: PuntoMapa[];
+  className?: string;
+  zoom?: number;
+  mensajeVacio?: string;
+  scrollWheelZoom?: boolean;
+}) {
   const conUbicacion = puntos.filter(
     (p): p is PuntoMapa & { lat: number; lng: number } => p.lat != null && p.lng != null,
   );
 
   if (conUbicacion.length === 0) {
     return (
-      <div className="flex h-64 items-center justify-center rounded-xl border border-dashed border-white/60 bg-white/20 text-center text-sm text-[var(--muted)]">
-        Ningún punto de acopio visible tiene ubicación geocodificada todavía.
+      <div
+        className={`flex items-center justify-center rounded-xl border border-dashed border-white/60 bg-white/20 text-center text-sm text-[var(--muted)] ${className}`}
+      >
+        {mensajeVacio}
       </div>
     );
   }
@@ -41,8 +55,8 @@ export default function PuntosAcopioMap({ puntos }: { puntos: PuntoMapa[] }) {
   ];
 
   return (
-    <div className="h-80 w-full overflow-hidden rounded-xl border border-white/60 sm:h-96">
-      <MapContainer center={centro} zoom={10} scrollWheelZoom className="h-full w-full">
+    <div className={`w-full overflow-hidden rounded-xl border border-white/60 ${className}`}>
+      <MapContainer center={centro} zoom={zoom} scrollWheelZoom={scrollWheelZoom} className="h-full w-full">
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

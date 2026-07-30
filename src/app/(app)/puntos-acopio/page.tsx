@@ -52,6 +52,10 @@ export default function PuntosAcopioPage() {
   const [guardando, setGuardando] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const [mostrarMapa, setMostrarMapa] = useState(true);
+  const [ubicacionEditando, setUbicacionEditando] = useState<{
+    lat: number | null;
+    lng: number | null;
+  } | null>(null);
 
   const cargarPuntos = useCallback(async () => {
     setCargando(true);
@@ -68,6 +72,7 @@ export default function PuntosAcopioPage() {
   function abrirNuevo() {
     setEditId(null);
     setForm(FORM_INICIAL);
+    setUbicacionEditando(null);
     setMostrarForm(true);
   }
 
@@ -83,6 +88,7 @@ export default function PuntosAcopioPage() {
       contacto: punto.contacto ?? "",
       activo: punto.activo,
     });
+    setUbicacionEditando({ lat: punto.lat, lng: punto.lng });
     setMostrarForm(true);
   }
 
@@ -90,6 +96,7 @@ export default function PuntosAcopioPage() {
     setMostrarForm(false);
     setEditId(null);
     setForm(FORM_INICIAL);
+    setUbicacionEditando(null);
   }
 
   async function guardar(e: React.FormEvent) {
@@ -288,6 +295,15 @@ export default function PuntosAcopioPage() {
                   className="input"
                 />
               </Campo>
+              {editId && (
+                <PuntosAcopioMap
+                  puntos={ubicacionEditando ? [{ id: editId, nombre: form.nombre, direccion: form.direccion, zona: form.zona || null, ...ubicacionEditando }] : []}
+                  className="h-40"
+                  zoom={14}
+                  scrollWheelZoom={false}
+                  mensajeVacio="Este punto todavía no tiene ubicación geocodificada."
+                />
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <Campo label="Municipio">
                   <input
