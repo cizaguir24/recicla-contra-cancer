@@ -22,13 +22,20 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 16, fontFamily: "Helvetica-Bold", color: "#2563eb" },
   headerSubtitle: { fontSize: 9, color: "#6b7280", marginTop: 2 },
   headerLogo: { width: LOGOTIPO_ANCHO_PT, height: LOGOTIPO_ALTO_PT, objectFit: "contain", objectPosition: "center" },
-  dirigidoABlock: { marginBottom: 12 },
+  dirigidoBenefactorRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 14,
+  },
+  dirigidoABlock: { flexShrink: 1, maxWidth: "48%" },
   dirigidoA: { fontSize: 12, fontFamily: "Helvetica-Bold" },
+  benefactorBlock: { flexShrink: 1, maxWidth: "48%" },
   fechaEmision: { fontSize: 9, color: "#6b7280", marginBottom: 16 },
-  section: { marginBottom: 14 },
   sectionTitle: { fontSize: 10, fontFamily: "Helvetica-Bold", marginBottom: 4, color: "#6b7280" },
   value: { fontSize: 11, fontFamily: "Helvetica-Bold" },
   label: { fontSize: 9, color: "#6b7280", marginTop: 2 },
+  textoDerecha: { textAlign: "right" },
   texto: { fontSize: 10, lineHeight: 1.5, marginBottom: 16 },
   table: { marginBottom: 8 },
   tableHeader: {
@@ -145,21 +152,25 @@ export function ManifiestoDocument({
           {logotipo && <Image src={logotipo} style={styles.headerLogo} />}
         </View>
 
-        {/* 2. Profesión y nombre de la persona a quien va dirigido, y su puesto */}
-        <View style={styles.dirigidoABlock}>
-          {dirigidoA && <Text style={styles.dirigidoA}>{dirigidoA}</Text>}
-          {dirigidoAPuesto && <Text style={styles.label}>{dirigidoAPuesto}</Text>}
-        </View>
-
-        {/* 3. Nombre del benefactor o empresa */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Benefactor</Text>
-          <Text style={styles.value}>{benefactorNombre}</Text>
-          {puntoNombre !== benefactorNombre && <Text style={styles.label}>{puntoNombre}</Text>}
-          {direccionCompleta && <Text style={styles.label}>{direccionCompleta}</Text>}
-          <Text style={styles.label}>
-            Periodo: {fmtFecha(fechaInicioPeriodo)} – {fmtFecha(fechaFinPeriodo)}
-          </Text>
+        {/* 2-3. Destinatario (izquierda) y Benefactor (derecha, alineado al margen) */}
+        <View style={styles.dirigidoBenefactorRow}>
+          <View style={styles.dirigidoABlock}>
+            {dirigidoA && <Text style={styles.dirigidoA}>{dirigidoA}</Text>}
+            {dirigidoAPuesto && <Text style={styles.label}>{dirigidoAPuesto}</Text>}
+          </View>
+          <View style={styles.benefactorBlock}>
+            <Text style={[styles.sectionTitle, styles.textoDerecha]}>Benefactor</Text>
+            <Text style={[styles.value, styles.textoDerecha]}>{benefactorNombre}</Text>
+            {puntoNombre !== benefactorNombre && (
+              <Text style={[styles.label, styles.textoDerecha]}>{puntoNombre}</Text>
+            )}
+            {direccionCompleta && (
+              <Text style={[styles.label, styles.textoDerecha]}>{direccionCompleta}</Text>
+            )}
+            <Text style={[styles.label, styles.textoDerecha]}>
+              Periodo: {fmtFecha(fechaInicioPeriodo)} – {fmtFecha(fechaFinPeriodo)}
+            </Text>
+          </View>
         </View>
 
         {/* 4. Fecha de emisión */}
