@@ -25,13 +25,20 @@ const styles = StyleSheet.create({
   dirigidoBenefactorRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 14,
+    marginBottom: 16,
   },
-  dirigidoABlock: { flexShrink: 1, maxWidth: "48%" },
+  // justifyContent: space-between empuja la fecha de emisión al fondo de la
+  // columna, que se estira (alignItems: stretch, por defecto) a la altura del
+  // bloque de benefactor, quedando así al mismo nivel que "Periodo".
+  dirigidoABlock: {
+    flexShrink: 1,
+    maxWidth: "48%",
+    flexDirection: "column",
+    justifyContent: "space-between",
+  },
   dirigidoA: { fontSize: 12, fontFamily: "Helvetica-Bold" },
   benefactorBlock: { flexShrink: 1, maxWidth: "48%" },
-  fechaEmision: { fontSize: 9, color: "#6b7280", marginBottom: 16 },
+  fechaEmision: { fontSize: 9, color: "#6b7280" },
   sectionTitle: { fontSize: 10, fontFamily: "Helvetica-Bold", marginBottom: 4, color: "#6b7280" },
   value: { fontSize: 11, fontFamily: "Helvetica-Bold" },
   label: { fontSize: 9, color: "#6b7280", marginTop: 2 },
@@ -152,11 +159,15 @@ export function ManifiestoDocument({
           {logotipo && <Image src={logotipo} style={styles.headerLogo} />}
         </View>
 
-        {/* 2-3. Destinatario (izquierda) y Benefactor (derecha, alineado al margen) */}
+        {/* 2-3. Destinatario y fecha de emisión (izquierda), Benefactor (derecha, alineado al margen) */}
         <View style={styles.dirigidoBenefactorRow}>
           <View style={styles.dirigidoABlock}>
-            {dirigidoA && <Text style={styles.dirigidoA}>{dirigidoA}</Text>}
-            {dirigidoAPuesto && <Text style={styles.label}>{dirigidoAPuesto}</Text>}
+            <View>
+              {dirigidoA && <Text style={styles.dirigidoA}>{dirigidoA}</Text>}
+              {dirigidoAPuesto && <Text style={styles.label}>{dirigidoAPuesto}</Text>}
+            </View>
+            {/* 4. Fecha de emisión, al mismo nivel que "Periodo" */}
+            <Text style={styles.fechaEmision}>Fecha de emisión: {fmtFecha(fechaManifiesto)}</Text>
           </View>
           <View style={styles.benefactorBlock}>
             <Text style={[styles.sectionTitle, styles.textoDerecha]}>Benefactor</Text>
@@ -172,9 +183,6 @@ export function ManifiestoDocument({
             </Text>
           </View>
         </View>
-
-        {/* 4. Fecha de emisión */}
-        <Text style={styles.fechaEmision}>Fecha de emisión: {fmtFecha(fechaManifiesto)}</Text>
 
         {/* 5. Texto inicial */}
         {parrafos.map((p, i) => (
