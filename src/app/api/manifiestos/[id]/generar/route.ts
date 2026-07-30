@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { ManifiestoDocument } from "@/lib/manifiesto-pdf";
-import { expandirAcopiosPorMaterial, totalKgDeFilas } from "@/lib/manifiestos";
+import { expandirAcopiosPorMaterial, totalKgDeFilas, esFirmaPngValida } from "@/lib/manifiestos";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -23,14 +23,14 @@ export async function POST(_request: NextRequest, { params }: Context) {
     );
   }
 
-  // Nombre, puesto y firma de quien emite son fijos y se toman siempre del
-  // valor vigente en Configuración, no de lo guardado en el borrador.
+  // Nombre, puesto y firma (opcional) de quien emite son fijos y se toman
+  // siempre del valor vigente en Configuración, no de lo guardado en el borrador.
   const config = await prisma.configuracionManifiesto.findUnique({ where: { id: "singleton" } });
   if (!config) {
     return NextResponse.json(
       {
         error:
-          "Falta configurar el nombre, puesto y firma de quien emite manifiestos en Configuración > Plantilla de Manifiesto.",
+          "Falta configurar el nombre y puesto de quien emite manifiestos en Configuración > Plantilla de Manifiesto.",
       },
       { status: 400 },
     );
@@ -42,7 +42,6 @@ export async function POST(_request: NextRequest, { params }: Context) {
   if (!manifiesto.texto) faltantes.push("texto");
   if (!config.nombreFirmante) faltantes.push("nombre de quien emite el manifiesto (Configuración)");
   if (!config.puesto) faltantes.push("puesto de quien emite el manifiesto (Configuración)");
-  if (!config.firmaDataUrl) faltantes.push("firma (Configuración)");
   if (faltantes.length > 0) {
     return NextResponse.json(
       { error: `Faltan datos obligatorios: ${faltantes.join(", ")}` },
@@ -82,6 +81,9 @@ export async function POST(_request: NextRequest, { params }: Context) {
     .filter(Boolean)
     .join(", ");
 
+  // La firma es opcional; si no es un PNG válido se trata como ausente.
+  const firma = esFirmaPngValida(config.firmaDataUrl) ? config.firmaDataUrl : null;
+
   const buffer = await renderToBuffer(
     ManifiestoDocument({
       dirigidoA: manifiesto.dirigidoA,
@@ -98,7 +100,7 @@ export async function POST(_request: NextRequest, { params }: Context) {
       total,
       nombreFirmante: config.nombreFirmante,
       puesto: config.puesto,
-      firmaDataUrl: config.firmaDataUrl,
+      firmaDataUrl: firma,
     }),
   );
 
@@ -107,7 +109,7 @@ export async function POST(_request: NextRequest, { params }: Context) {
     data: {
       nombreFirmante: config.nombreFirmante,
       puesto: config.puesto,
-      firmaDataUrl: config.firmaDataUrl,
+      firmaDataUrl: firma,
       pdfData: new Uint8Array(buffer),
       totalKg: total,
       estatus: "generado",

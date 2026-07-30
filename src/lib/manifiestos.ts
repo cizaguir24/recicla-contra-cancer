@@ -46,3 +46,9 @@ export const ESTATUS_BADGE: Record<string, string> = {
 // Un borrador o un manifiesto cancelado eliminado se conserva en la papelera
 // este tiempo antes de purgarse definitivamente.
 export const DIAS_RETENCION_PAPELERA = 15;
+
+// La firma es opcional; cuando existe, debe ser un PNG (así queda codificada
+// la imagen en el data URL). Cualquier otro formato se trata como ausente.
+export function esFirmaPngValida(dataUrl: string | null | undefined): dataUrl is string {
+  return !!dataUrl && dataUrl.startsWith("data:image/png");
+}

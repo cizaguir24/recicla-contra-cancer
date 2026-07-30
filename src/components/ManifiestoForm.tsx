@@ -6,8 +6,10 @@ import { AlertTriangle } from "lucide-react";
 import {
   expandirAcopiosPorMaterial,
   totalKgDeFilas,
+  esFirmaPngValida,
   type FilaAcopioManifiesto,
 } from "@/lib/manifiestos";
+import { Toast, type ToastData } from "@/components/Toast";
 
 type PuntoAcopio = { id: string; nombre: string; direccion: string; zona: string | null; estado: string | null };
 
@@ -78,6 +80,7 @@ export default function ManifiestoForm({
   const [configDefault, setConfigDefault] = useState<ConfiguracionManifiesto | null>(null);
   const [textoTocado, setTextoTocado] = useState(false);
   const [textoCierreTocado, setTextoCierreTocado] = useState(false);
+  const [toast, setToast] = useState<ToastData | null>(null);
 
   useEffect(() => {
     fetch("/api/puntos-acopio")
@@ -174,6 +177,7 @@ export default function ManifiestoForm({
       setError("La fecha final no puede ser anterior a la fecha inicial");
       return null;
     }
+    const esNuevo = !manifiestoId;
     setGuardando(true);
     const url = manifiestoId ? `/api/manifiestos/${manifiestoId}` : "/api/manifiestos";
     const method = manifiestoId ? "PATCH" : "POST";
@@ -193,11 +197,15 @@ export default function ManifiestoForm({
     if (!res.ok) {
       const data = await res.json().catch(() => null);
       setError(data?.error ?? "No se pudo guardar el manifiesto");
+      if (esNuevo) {
+        setToast({ message: "No se pudo crear el manifiesto.", variant: "error" });
+      }
       return null;
     }
     const data = await res.json();
-    if (!manifiestoId) {
+    if (esNuevo) {
       setManifiestoId(data.id);
+      setToast({ message: "Manifiesto creado exitosamente.", variant: "success" });
       router.replace(`/manifiestos/${data.id}`);
     }
     return data.id ?? manifiestoId;
@@ -214,9 +222,9 @@ export default function ManifiestoForm({
       setError(`Faltan datos obligatorios: ${camposFaltantes.join(", ")}`);
       return;
     }
-    if (!configDefault?.nombreFirmante || !configDefault?.puesto || !configDefault?.firmaDataUrl) {
+    if (!configDefault?.nombreFirmante || !configDefault?.puesto) {
       setError(
-        "Falta configurar el nombre, puesto y firma de quien emite manifiestos en Configuración > Plantilla de Manifiesto.",
+        "Falta configurar el nombre y puesto de quien emite manifiestos en Configuración > Plantilla de Manifiesto.",
       );
       return;
     }
@@ -257,6 +265,7 @@ export default function ManifiestoForm({
 
   return (
     <div className="space-y-6 pb-10">
+      {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
       <div>
         <h1 className="text-xl font-semibold">{manifiestoId ? "Editar manifiesto" : "Crear manifiesto"}</h1>
         <p className="text-sm text-foreground/60">
@@ -429,7 +438,7 @@ export default function ManifiestoForm({
             {configDefault?.nombreFirmante || "—"}
             {configDefault?.puesto ? ` · ${configDefault.puesto}` : ""}
           </p>
-          {configDefault?.firmaDataUrl && (
+          {esFirmaPngValida(configDefault?.firmaDataUrl) && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={configDefault.firmaDataUrl}

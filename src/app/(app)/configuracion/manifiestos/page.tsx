@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Upload } from "lucide-react";
+import { Upload, Trash2 } from "lucide-react";
 
 export default function ConfiguracionManifiestosPage() {
   const [textoDefault, setTextoDefault] = useState("");
@@ -9,6 +9,7 @@ export default function ConfiguracionManifiestosPage() {
   const [nombreFirmante, setNombreFirmante] = useState("");
   const [puesto, setPuesto] = useState("");
   const [firmaDataUrl, setFirmaDataUrl] = useState("");
+  const [firmaError, setFirmaError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [guardado, setGuardado] = useState(false);
@@ -29,12 +30,25 @@ export default function ConfiguracionManifiestosPage() {
   function onFirmaChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    const esPng = file.type === "image/png" || file.name.toLowerCase().endsWith(".png");
+    if (!esPng) {
+      setFirmaError("La firma debe ser un archivo PNG.");
+      e.target.value = "";
+      return;
+    }
+    setFirmaError(null);
     const reader = new FileReader();
     reader.onload = () => {
       setFirmaDataUrl(reader.result as string);
       setGuardado(false);
     };
     reader.readAsDataURL(file);
+  }
+
+  function eliminarFirma() {
+    setFirmaDataUrl("");
+    setFirmaError(null);
+    setGuardado(false);
   }
 
   async function guardar(e: React.FormEvent) {
@@ -132,12 +146,27 @@ export default function ConfiguracionManifiestosPage() {
           </div>
 
           <div className="mt-3 space-y-1 text-sm">
-            <span className="font-medium">Firma</span>
-            <label className="flex w-fit cursor-pointer items-center gap-2 rounded-xl border border-dashed border-white/60 bg-white/30 px-3 py-2 text-sm hover:bg-white/50">
-              <Upload className="h-4 w-4" />
-              {firmaDataUrl ? "Cambiar imagen de firma" : "Subir imagen de firma"}
-              <input type="file" accept="image/*" className="hidden" onChange={onFirmaChange} />
-            </label>
+            <span className="font-medium">Firma (opcional)</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="flex w-fit cursor-pointer items-center gap-2 rounded-xl border border-dashed border-white/60 bg-white/30 px-3 py-2 text-sm hover:bg-white/50">
+                <Upload className="h-4 w-4" />
+                {firmaDataUrl ? "Reemplazar imagen de firma" : "Subir imagen de firma"}
+                <input type="file" accept="image/png,.png" className="hidden" onChange={onFirmaChange} />
+              </label>
+              {firmaDataUrl && (
+                <button
+                  type="button"
+                  onClick={eliminarFirma}
+                  className="flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600 hover:bg-red-100"
+                >
+                  <Trash2 className="h-4 w-4" /> Eliminar firma
+                </button>
+              )}
+            </div>
+            <p className="text-[11px] text-[var(--muted)]">
+              Formato PNG únicamente. Si no se sube una firma, el manifiesto se genera sin ella.
+            </p>
+            {firmaError && <p className="text-xs text-red-600">{firmaError}</p>}
             {firmaDataUrl && (
               // eslint-disable-next-line @next/next/no-img-element
               <img

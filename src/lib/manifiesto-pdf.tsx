@@ -1,5 +1,5 @@
 import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
-import type { FilaAcopioManifiesto } from "./manifiestos";
+import { esFirmaPngValida, type FilaAcopioManifiesto } from "./manifiestos";
 
 const styles = StyleSheet.create({
   page: { padding: 40, fontSize: 10, fontFamily: "Helvetica", color: "#1f2430" },
@@ -50,7 +50,8 @@ const styles = StyleSheet.create({
   totalValor: { width: "30%", textAlign: "right", fontFamily: "Helvetica-Bold", fontSize: 10 },
   textoCierre: { fontSize: 10, lineHeight: 1.5, marginTop: 16 },
   firmaBlock: { marginTop: 36, alignItems: "center" },
-  firmaNombre: { fontFamily: "Helvetica-Bold", fontSize: 10, marginTop: 10 },
+  firmaNombre: { fontFamily: "Helvetica-Bold", fontSize: 10 },
+  firmaNombreConFirma: { fontFamily: "Helvetica-Bold", fontSize: 10, marginTop: 10 },
   firmaImg: { width: 140, height: 60, objectFit: "contain" },
   footer: {
     position: "absolute",
@@ -118,6 +119,7 @@ export function ManifiestoDocument({
   firmaDataUrl,
 }: ManifiestoDocumentProps) {
   const parrafos = texto.split(/\n{2,}/).filter(Boolean);
+  const firma = esFirmaPngValida(firmaDataUrl) ? firmaDataUrl : null;
 
   return (
     <Document>
@@ -177,10 +179,10 @@ export function ManifiestoDocument({
         {/* 8. Texto de cierre */}
         {textoCierre ? <Text style={styles.textoCierre}>{textoCierre}</Text> : null}
 
-        {/* 9-11. Firma, nombre y puesto de quien emite el manifiesto */}
+        {/* 9-11. Firma (si existe), nombre y puesto de quien emite el manifiesto */}
         <View style={styles.firmaBlock} wrap={false}>
-          {firmaDataUrl && <Image src={firmaDataUrl} style={styles.firmaImg} />}
-          <Text style={styles.firmaNombre}>{nombreFirmante}</Text>
+          {firma && <Image src={firma} style={styles.firmaImg} />}
+          <Text style={firma ? styles.firmaNombreConFirma : styles.firmaNombre}>{nombreFirmante}</Text>
           <Text style={styles.label}>{puesto}</Text>
         </View>
 
