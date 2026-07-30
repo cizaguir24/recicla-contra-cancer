@@ -23,13 +23,26 @@ export async function POST(_request: NextRequest, { params }: Context) {
     );
   }
 
+  // Nombre, puesto y firma de quien emite son fijos y se toman siempre del
+  // valor vigente en Configuración, no de lo guardado en el borrador.
+  const config = await prisma.configuracionManifiesto.findUnique({ where: { id: "singleton" } });
+  if (!config) {
+    return NextResponse.json(
+      {
+        error:
+          "Falta configurar el nombre, puesto y firma de quien emite manifiestos en Configuración > Plantilla de Manifiesto.",
+      },
+      { status: 400 },
+    );
+  }
+
   const faltantes: string[] = [];
   if (!manifiesto.puntoAcopioId) faltantes.push("punto de acopio");
   if (!manifiesto.dirigidoA) faltantes.push("profesión y nombre de la persona a quien va dirigido");
-  if (!manifiesto.nombreFirmante) faltantes.push("nombre de quien emite el manifiesto");
-  if (!manifiesto.puesto) faltantes.push("puesto");
   if (!manifiesto.texto) faltantes.push("texto");
-  if (!manifiesto.firmaDataUrl) faltantes.push("firma");
+  if (!config.nombreFirmante) faltantes.push("nombre de quien emite el manifiesto (Configuración)");
+  if (!config.puesto) faltantes.push("puesto de quien emite el manifiesto (Configuración)");
+  if (!config.firmaDataUrl) faltantes.push("firma (Configuración)");
   if (faltantes.length > 0) {
     return NextResponse.json(
       { error: `Faltan datos obligatorios: ${faltantes.join(", ")}` },
@@ -83,15 +96,18 @@ export async function POST(_request: NextRequest, { params }: Context) {
       textoCierre: manifiesto.textoCierre,
       filas,
       total,
-      nombreFirmante: manifiesto.nombreFirmante,
-      puesto: manifiesto.puesto,
-      firmaDataUrl: manifiesto.firmaDataUrl,
+      nombreFirmante: config.nombreFirmante,
+      puesto: config.puesto,
+      firmaDataUrl: config.firmaDataUrl,
     }),
   );
 
   const actualizado = await prisma.manifiesto.update({
     where: { id },
     data: {
+      nombreFirmante: config.nombreFirmante,
+      puesto: config.puesto,
+      firmaDataUrl: config.firmaDataUrl,
       pdfData: new Uint8Array(buffer),
       totalKg: total,
       estatus: "generado",

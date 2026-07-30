@@ -74,11 +74,15 @@ export async function PATCH(request: NextRequest, { params }: Context) {
   if ("fechaFinPeriodo" in body) data.fechaFinPeriodo = fechaFinPeriodo;
   if ("dirigidoA" in body) data.dirigidoA = body.dirigidoA;
   if ("dirigidoAPuesto" in body) data.dirigidoAPuesto = body.dirigidoAPuesto;
-  if ("nombreFirmante" in body) data.nombreFirmante = body.nombreFirmante;
-  if ("puesto" in body) data.puesto = body.puesto;
   if ("texto" in body) data.texto = body.texto;
   if ("textoCierre" in body) data.textoCierre = body.textoCierre;
-  if ("firmaDataUrl" in body) data.firmaDataUrl = body.firmaDataUrl || null;
+
+  // Nombre, puesto y firma de quien emite son fijos: se toman siempre del
+  // valor vigente en Configuración, no de lo que mande el cliente.
+  const config = await prisma.configuracionManifiesto.findUnique({ where: { id: "singleton" } });
+  data.nombreFirmante = config?.nombreFirmante || "";
+  data.puesto = config?.puesto || "";
+  data.firmaDataUrl = config?.firmaDataUrl || null;
 
   const manifiesto = await prisma.manifiesto.update({
     where: { id },

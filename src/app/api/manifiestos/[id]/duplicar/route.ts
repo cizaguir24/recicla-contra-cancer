@@ -10,6 +10,10 @@ export async function POST(_request: NextRequest, { params }: Context) {
     return NextResponse.json({ error: "No encontrado" }, { status: 404 });
   }
 
+  // Nombre, puesto y firma de quien emite son fijos: se toman siempre del
+  // valor vigente en Configuración, no de lo que tenía el original.
+  const config = await prisma.configuracionManifiesto.findUnique({ where: { id: "singleton" } });
+
   const copia = await prisma.manifiesto.create({
     data: {
       puntoAcopioId: original.puntoAcopioId,
@@ -19,11 +23,11 @@ export async function POST(_request: NextRequest, { params }: Context) {
       titulo: "",
       dirigidoA: original.dirigidoA,
       dirigidoAPuesto: original.dirigidoAPuesto,
-      nombreFirmante: original.nombreFirmante,
-      puesto: original.puesto,
+      nombreFirmante: config?.nombreFirmante || "",
+      puesto: config?.puesto || "",
       texto: original.texto,
       textoCierre: original.textoCierre,
-      firmaDataUrl: original.firmaDataUrl,
+      firmaDataUrl: config?.firmaDataUrl || null,
       estatus: "borrador",
     },
   });

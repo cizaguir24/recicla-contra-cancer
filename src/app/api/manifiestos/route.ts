@@ -68,6 +68,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Nombre, puesto y firma de quien emite son fijos: se toman siempre del
+  // valor vigente en Configuración, no de lo que mande el cliente.
+  const config = await prisma.configuracionManifiesto.findUnique({ where: { id: "singleton" } });
+
   const manifiesto = await prisma.manifiesto.create({
     data: {
       puntoAcopioId: body.puntoAcopioId,
@@ -77,11 +81,11 @@ export async function POST(request: NextRequest) {
       titulo: "",
       dirigidoA: body.dirigidoA || "",
       dirigidoAPuesto: body.dirigidoAPuesto || "",
-      nombreFirmante: body.nombreFirmante || "",
-      puesto: body.puesto || "",
+      nombreFirmante: config?.nombreFirmante || "",
+      puesto: config?.puesto || "",
       texto: body.texto || "",
       textoCierre: body.textoCierre || "",
-      firmaDataUrl: body.firmaDataUrl || null,
+      firmaDataUrl: config?.firmaDataUrl || null,
       estatus: "borrador",
     },
     select: SELECT_LISTA,

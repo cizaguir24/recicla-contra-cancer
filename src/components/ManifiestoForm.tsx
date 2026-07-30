@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Upload } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import {
   expandirAcopiosPorMaterial,
   totalKgDeFilas,
@@ -28,17 +28,17 @@ type ManifiestoDetalle = {
   fechaFinPeriodo: string;
   dirigidoA: string;
   dirigidoAPuesto: string;
-  nombreFirmante: string;
-  puesto: string;
   texto: string;
   textoCierre: string;
-  firmaDataUrl: string | null;
   estatus: string;
 };
 
 type ConfiguracionManifiesto = {
   textoDefault: string;
   textoCierreDefault: string;
+  nombreFirmante: string;
+  puesto: string;
+  firmaDataUrl: string | null;
 };
 
 const hoy = () => new Date().toISOString().slice(0, 10);
@@ -50,11 +50,8 @@ const FORM_VACIO = {
   fechaFinPeriodo: "",
   dirigidoA: "",
   dirigidoAPuesto: "",
-  nombreFirmante: "",
-  puesto: "",
   texto: "",
   textoCierre: "",
-  firmaDataUrl: "",
 };
 
 export default function ManifiestoForm({
@@ -106,11 +103,8 @@ export default function ManifiestoForm({
           fechaFinPeriodo: m.fechaFinPeriodo.slice(0, 10),
           dirigidoA: m.dirigidoA,
           dirigidoAPuesto: m.dirigidoAPuesto,
-          nombreFirmante: m.nombreFirmante,
-          puesto: m.puesto,
           texto: m.texto,
           textoCierre: m.textoCierre,
-          firmaDataUrl: m.firmaDataUrl ?? "",
         });
         // Ya tiene contenido propio: no sobrescribir con la plantilla general.
         setTextoTocado(true);
@@ -166,14 +160,6 @@ export default function ManifiestoForm({
 
   const total = useMemo(() => totalKgDeFilas(filas), [filas]);
 
-  function onFirmaChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setForm((f) => ({ ...f, firmaDataUrl: reader.result as string }));
-    reader.readAsDataURL(file);
-  }
-
   async function guardarBorrador(): Promise<string | null> {
     setError(null);
     if (!form.puntoAcopioId) {
@@ -191,10 +177,17 @@ export default function ManifiestoForm({
     setGuardando(true);
     const url = manifiestoId ? `/api/manifiestos/${manifiestoId}` : "/api/manifiestos";
     const method = manifiestoId ? "PATCH" : "POST";
+    // Nombre, puesto y firma de quien emite son fijos (Configuración) y se
+    // aplican siempre con su valor vigente al guardar.
     const res = await fetch(url, {
       method,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify({
+        ...form,
+        nombreFirmante: configDefault?.nombreFirmante ?? "",
+        puesto: configDefault?.puesto ?? "",
+        firmaDataUrl: configDefault?.firmaDataUrl ?? "",
+      }),
     });
     setGuardando(false);
     if (!res.ok) {
@@ -215,13 +208,16 @@ export default function ManifiestoForm({
 
     const camposFaltantes: string[] = [];
     if (!form.dirigidoA) camposFaltantes.push("profesión y nombre de la persona a quien va dirigido");
-    if (!form.nombreFirmante) camposFaltantes.push("nombre de quien emite el manifiesto");
-    if (!form.puesto) camposFaltantes.push("puesto");
     if (!form.texto) camposFaltantes.push("texto");
-    if (!form.firmaDataUrl) camposFaltantes.push("firma");
     if (filas.length === 0) camposFaltantes.push("al menos un registro de acopio");
     if (camposFaltantes.length > 0) {
       setError(`Faltan datos obligatorios: ${camposFaltantes.join(", ")}`);
+      return;
+    }
+    if (!configDefault?.nombreFirmante || !configDefault?.puesto || !configDefault?.firmaDataUrl) {
+      setError(
+        "Falta configurar el nombre, puesto y firma de quien emite manifiestos en Configuración > Plantilla de Manifiesto.",
+      );
       return;
     }
 
@@ -425,43 +421,21 @@ export default function ManifiestoForm({
           />
         </label>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label className="space-y-1 text-sm">
-            <span className="font-medium">Nombre(s) de quien emite el manifiesto</span>
-            <input
-              value={form.nombreFirmante}
-              onChange={(e) => setForm({ ...form, nombreFirmante: e.target.value })}
-              disabled={soloLectura}
-              className="input"
-            />
-          </label>
-          <label className="space-y-1 text-sm">
-            <span className="font-medium">Puesto</span>
-            <input
-              value={form.puesto}
-              onChange={(e) => setForm({ ...form, puesto: e.target.value })}
-              disabled={soloLectura}
-              className="input"
-            />
-          </label>
-        </div>
-        <p className="text-[11px] text-[var(--muted)]">
-          Nombre y puesto de quien firma el manifiesto (distinto de la persona a quien va dirigido).
-          Aparecen en el pie del documento, junto con la firma.
-        </p>
-
-        <div className="space-y-1 text-sm">
-          <span className="font-medium">Firma</span>
-          {!soloLectura && (
-            <label className="flex w-fit cursor-pointer items-center gap-2 rounded-xl border border-dashed border-white/60 bg-white/30 px-3 py-2 text-sm hover:bg-white/50">
-              <Upload className="h-4 w-4" />
-              {form.firmaDataUrl ? "Cambiar imagen de firma" : "Subir imagen de firma"}
-              <input type="file" accept="image/*" className="hidden" onChange={onFirmaChange} />
-            </label>
-          )}
-          {form.firmaDataUrl && (
+        <div className="rounded-lg bg-white/40 p-3 text-xs">
+          <p className="text-[var(--muted)]">
+            Quien emite y firma (fijo, se configura en Configuración &gt; Plantilla de Manifiesto)
+          </p>
+          <p className="mt-1 font-medium text-[var(--foreground)]">
+            {configDefault?.nombreFirmante || "—"}
+            {configDefault?.puesto ? ` · ${configDefault.puesto}` : ""}
+          </p>
+          {configDefault?.firmaDataUrl && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={form.firmaDataUrl} alt="Firma" className="mt-2 h-16 rounded border border-white/60 bg-white/50 p-1" />
+            <img
+              src={configDefault.firmaDataUrl}
+              alt="Firma"
+              className="mt-2 h-16 rounded border border-white/60 bg-white/50 p-1"
+            />
           )}
         </div>
       </div>

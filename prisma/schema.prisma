@@ -108,5 +108,8 @@ model ConfiguracionManifiesto {
   id                 String   @id @default("singleton")
   textoDefault       String
   textoCierreDefault String
+  nombreFirmante     String   @default("") // nombre(s) de quien emite/firma todos los manifiestos, fijo
+  puesto             String   @default("") // puesto de quien emite/firma todos los manifiestos, fijo
+  firmaDataUrl       String? // imagen de firma en base64 (data URL), fija para todos los manifiestos
   updatedAt          DateTime @updatedAt
 }
