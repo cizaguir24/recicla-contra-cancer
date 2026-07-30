@@ -16,7 +16,7 @@ const styles = StyleSheet.create({
     borderBottomStyle: "solid",
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-start",
+    alignItems: "center",
   },
   headerTitleBlock: { flexShrink: 1 },
   headerTitle: { fontSize: 16, fontFamily: "Helvetica-Bold", color: "#2563eb" },
