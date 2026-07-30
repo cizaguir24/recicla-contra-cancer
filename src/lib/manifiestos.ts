@@ -52,3 +52,10 @@ export const DIAS_RETENCION_PAPELERA = 15;
 export function esFirmaPngValida(dataUrl: string | null | undefined): dataUrl is string {
   return !!dataUrl && dataUrl.startsWith("data:image/png");
 }
+
+// El logotipo del encabezado es opcional; acepta PNG, JPG/JPEG o WebP.
+// Cualquier otro formato se trata como ausente.
+const LOGOTIPO_PREFIJOS_VALIDOS = ["data:image/png", "data:image/jpeg", "data:image/webp"];
+export function esLogotipoValido(dataUrl: string | null | undefined): dataUrl is string {
+  return !!dataUrl && LOGOTIPO_PREFIJOS_VALIDOS.some((prefijo) => dataUrl.startsWith(prefijo));
+}

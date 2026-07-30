@@ -32,12 +32,14 @@ export async function PATCH(request: NextRequest) {
     nombreFirmante?: string;
     puesto?: string;
     firmaDataUrl?: string | null;
+    logotipoDataUrl?: string | null;
   } = {};
   if ("textoDefault" in body) data.textoDefault = body.textoDefault;
   if ("textoCierreDefault" in body) data.textoCierreDefault = body.textoCierreDefault;
   if ("nombreFirmante" in body) data.nombreFirmante = body.nombreFirmante;
   if ("puesto" in body) data.puesto = body.puesto;
   if ("firmaDataUrl" in body) data.firmaDataUrl = body.firmaDataUrl || null;
+  if ("logotipoDataUrl" in body) data.logotipoDataUrl = body.logotipoDataUrl || null;
 
   const config = await prisma.configuracionManifiesto.upsert({
     where: { id: "singleton" },

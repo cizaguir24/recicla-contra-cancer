@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { ManifiestoDocument } from "@/lib/manifiesto-pdf";
-import { expandirAcopiosPorMaterial, totalKgDeFilas, esFirmaPngValida } from "@/lib/manifiestos";
+import {
+  expandirAcopiosPorMaterial,
+  totalKgDeFilas,
+  esFirmaPngValida,
+  esLogotipoValido,
+} from "@/lib/manifiestos";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -81,11 +86,14 @@ export async function POST(_request: NextRequest, { params }: Context) {
     .filter(Boolean)
     .join(", ");
 
-  // La firma es opcional; si no es un PNG válido se trata como ausente.
+  // La firma y el logotipo son opcionales; si el formato no es válido se
+  // tratan como ausentes.
   const firma = esFirmaPngValida(config.firmaDataUrl) ? config.firmaDataUrl : null;
+  const logotipo = esLogotipoValido(config.logotipoDataUrl) ? config.logotipoDataUrl : null;
 
   const buffer = await renderToBuffer(
     ManifiestoDocument({
+      logotipoDataUrl: logotipo,
       dirigidoA: manifiesto.dirigidoA,
       dirigidoAPuesto: manifiesto.dirigidoAPuesto,
       fechaManifiesto: manifiesto.fechaManifiesto,

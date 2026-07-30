@@ -1,5 +1,10 @@
 import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
-import { esFirmaPngValida, type FilaAcopioManifiesto } from "./manifiestos";
+import { esFirmaPngValida, esLogotipoValido, type FilaAcopioManifiesto } from "./manifiestos";
+
+// 1mm = 2.8346456693pt. El contenedor del logotipo respeta el máximo de
+// 90x30mm (proporción 3:1) solicitado para el PDF.
+const LOGOTIPO_ANCHO_PT = 255;
+const LOGOTIPO_ALTO_PT = 85;
 
 const styles = StyleSheet.create({
   page: { padding: 40, fontSize: 10, fontFamily: "Helvetica", color: "#1f2430" },
@@ -9,9 +14,14 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: "#2563eb",
     borderBottomStyle: "solid",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
   },
+  headerTitleBlock: { flexShrink: 1 },
   headerTitle: { fontSize: 16, fontFamily: "Helvetica-Bold", color: "#2563eb" },
   headerSubtitle: { fontSize: 9, color: "#6b7280", marginTop: 2 },
+  headerLogo: { width: LOGOTIPO_ANCHO_PT, height: LOGOTIPO_ALTO_PT, objectFit: "contain", objectPosition: "center" },
   dirigidoABlock: { marginBottom: 12 },
   dirigidoA: { fontSize: 12, fontFamily: "Helvetica-Bold" },
   fechaEmision: { fontSize: 9, color: "#6b7280", marginBottom: 16 },
@@ -84,6 +94,7 @@ function fmtKg(n: number) {
 }
 
 export type ManifiestoDocumentProps = {
+  logotipoDataUrl: string | null;
   dirigidoA: string;
   dirigidoAPuesto: string;
   fechaManifiesto: Date | string;
@@ -102,6 +113,7 @@ export type ManifiestoDocumentProps = {
 };
 
 export function ManifiestoDocument({
+  logotipoDataUrl,
   dirigidoA,
   dirigidoAPuesto,
   fechaManifiesto,
@@ -120,13 +132,17 @@ export function ManifiestoDocument({
 }: ManifiestoDocumentProps) {
   const parrafos = texto.split(/\n{2,}/).filter(Boolean);
   const firma = esFirmaPngValida(firmaDataUrl) ? firmaDataUrl : null;
+  const logotipo = esLogotipoValido(logotipoDataUrl) ? logotipoDataUrl : null;
 
   return (
     <Document>
       <Page size="LETTER" style={styles.page} wrap>
         <View style={styles.header} fixed>
-          <Text style={styles.headerTitle}>Recicla Contra el Cáncer</Text>
-          <Text style={styles.headerSubtitle}>Un proyecto original de Cómplices AC</Text>
+          <View style={styles.headerTitleBlock}>
+            <Text style={styles.headerTitle}>Recicla Contra el Cáncer</Text>
+            <Text style={styles.headerSubtitle}>Un proyecto original de Cómplices AC</Text>
+          </View>
+          {logotipo && <Image src={logotipo} style={styles.headerLogo} />}
         </View>
 
         {/* 2. Profesión y nombre de la persona a quien va dirigido, y su puesto */}

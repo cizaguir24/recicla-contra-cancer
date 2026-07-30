@@ -10,6 +10,8 @@ export default function ConfiguracionManifiestosPage() {
   const [puesto, setPuesto] = useState("");
   const [firmaDataUrl, setFirmaDataUrl] = useState("");
   const [firmaError, setFirmaError] = useState<string | null>(null);
+  const [logotipoDataUrl, setLogotipoDataUrl] = useState("");
+  const [logotipoError, setLogotipoError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [guardado, setGuardado] = useState(false);
@@ -23,6 +25,7 @@ export default function ConfiguracionManifiestosPage() {
         setNombreFirmante(data.nombreFirmante ?? "");
         setPuesto(data.puesto ?? "");
         setFirmaDataUrl(data.firmaDataUrl ?? "");
+        setLogotipoDataUrl(data.logotipoDataUrl ?? "");
         setCargando(false);
       });
   }, []);
@@ -51,6 +54,45 @@ export default function ConfiguracionManifiestosPage() {
     setGuardado(false);
   }
 
+  const LOGOTIPO_TIPOS_ACEPTADOS = ["image/png", "image/jpeg", "image/webp"];
+  const LOGOTIPO_TAMANO_MAXIMO = 5 * 1024 * 1024;
+  const LOGOTIPO_ERROR =
+    "El logotipo debe ser una imagen PNG, JPG o WebP con un tamaño máximo de 5 MB.";
+
+  function onLogotipoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const tipoValido = LOGOTIPO_TIPOS_ACEPTADOS.includes(file.type);
+    const tamanoValido = file.size <= LOGOTIPO_TAMANO_MAXIMO;
+    if (!tipoValido || !tamanoValido) {
+      setLogotipoError(LOGOTIPO_ERROR);
+      e.target.value = "";
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      // Verifica que el archivo cargue como imagen válida antes de aceptarlo,
+      // para no terminar mostrando una imagen rota.
+      const img = new Image();
+      img.onload = () => {
+        setLogotipoDataUrl(dataUrl);
+        setLogotipoError(null);
+        setGuardado(false);
+      };
+      img.onerror = () => setLogotipoError(LOGOTIPO_ERROR);
+      img.src = dataUrl;
+    };
+    reader.onerror = () => setLogotipoError(LOGOTIPO_ERROR);
+    reader.readAsDataURL(file);
+  }
+
+  function eliminarLogotipo() {
+    setLogotipoDataUrl("");
+    setLogotipoError(null);
+    setGuardado(false);
+  }
+
   async function guardar(e: React.FormEvent) {
     e.preventDefault();
     setGuardando(true);
@@ -58,7 +100,14 @@ export default function ConfiguracionManifiestosPage() {
     await fetch("/api/configuracion/manifiestos", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ textoDefault, textoCierreDefault, nombreFirmante, puesto, firmaDataUrl }),
+      body: JSON.stringify({
+        textoDefault,
+        textoCierreDefault,
+        nombreFirmante,
+        puesto,
+        firmaDataUrl,
+        logotipoDataUrl,
+      }),
     });
     setGuardando(false);
     setGuardado(true);
@@ -111,6 +160,53 @@ export default function ConfiguracionManifiestosPage() {
             Se muestra después de la tabla de acopios y el total acumulado, antes de la firma.
           </p>
         </label>
+
+        <div className="border-t border-[var(--border)] pt-4">
+          <h2 className="mb-1 text-sm font-semibold">Logotipo del encabezado</h2>
+          <p className="mb-3 text-[11px] text-[var(--muted)]">
+            Se muestra en la esquina superior derecha del encabezado, junto al título. Se guarda
+            una sola vez y se aplica automáticamente a todos los manifiestos nuevos.
+          </p>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex w-fit cursor-pointer items-center gap-2 rounded-xl border border-dashed border-white/60 bg-white/30 px-3 py-2 text-sm hover:bg-white/50">
+              <Upload className="h-4 w-4" />
+              {logotipoDataUrl ? "Reemplazar logotipo" : "Subir logotipo"}
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"
+                className="hidden"
+                onChange={onLogotipoChange}
+              />
+            </label>
+            {logotipoDataUrl && (
+              <button
+                type="button"
+                onClick={eliminarLogotipo}
+                className="flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600 hover:bg-red-100"
+              >
+                <Trash2 className="h-4 w-4" /> Eliminar logotipo
+              </button>
+            )}
+          </div>
+          <p className="mt-1 text-[11px] text-[var(--muted)]">
+            Dimensiones recomendadas: 1200 × 400 px, formato PNG y fondo transparente.
+          </p>
+          {logotipoError && <p className="text-xs text-red-600">{logotipoError}</p>}
+          {logotipoDataUrl && (
+            <div className="mt-2 flex max-h-[120px] max-w-[360px] items-center justify-center rounded border border-white/60 bg-white/50 p-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={logotipoDataUrl}
+                alt="Logotipo"
+                className="max-h-[104px] max-w-[344px] object-contain object-center"
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                }}
+              />
+            </div>
+          )}
+        </div>
 
         <div className="border-t border-[var(--border)] pt-4">
           <h2 className="mb-1 text-sm font-semibold">Quien emite y firma los manifiestos</h2>
