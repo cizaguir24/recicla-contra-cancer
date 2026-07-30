@@ -26,7 +26,7 @@ type ManifiestoDetalle = {
   fechaManifiesto: string;
   fechaInicioPeriodo: string;
   fechaFinPeriodo: string;
-  titulo: string;
+  dirigidoA: string;
   nombreFirmante: string;
   puesto: string;
   texto: string;
@@ -47,7 +47,7 @@ const FORM_VACIO = {
   fechaManifiesto: hoy(),
   fechaInicioPeriodo: "",
   fechaFinPeriodo: "",
-  titulo: "",
+  dirigidoA: "",
   nombreFirmante: "",
   puesto: "",
   texto: "",
@@ -102,7 +102,7 @@ export default function ManifiestoForm({
           fechaManifiesto: m.fechaManifiesto.slice(0, 10),
           fechaInicioPeriodo: m.fechaInicioPeriodo.slice(0, 10),
           fechaFinPeriodo: m.fechaFinPeriodo.slice(0, 10),
-          titulo: m.titulo,
+          dirigidoA: m.dirigidoA,
           nombreFirmante: m.nombreFirmante,
           puesto: m.puesto,
           texto: m.texto,
@@ -211,8 +211,8 @@ export default function ManifiestoForm({
     setError(null);
 
     const camposFaltantes: string[] = [];
-    if (!form.titulo) camposFaltantes.push("título");
-    if (!form.nombreFirmante) camposFaltantes.push("nombre del firmante");
+    if (!form.dirigidoA) camposFaltantes.push("profesión y nombre de la persona a quien va dirigido");
+    if (!form.nombreFirmante) camposFaltantes.push("nombre de quien emite el manifiesto");
     if (!form.puesto) camposFaltantes.push("puesto");
     if (!form.texto) camposFaltantes.push("texto");
     if (!form.firmaDataUrl) camposFaltantes.push("firma");
@@ -364,38 +364,20 @@ export default function ManifiestoForm({
       </div>
 
       <div className="space-y-3 rounded-xl border border-white/50 bg-white/40 backdrop-blur-md p-4">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label className="space-y-1 text-sm">
-            <span className="font-medium">Título</span>
-            <input
-              value={form.titulo}
-              onChange={(e) => setForm({ ...form, titulo: e.target.value })}
-              placeholder="Manifiesto de Acopio"
-              disabled={soloLectura}
-              className="input"
-            />
-          </label>
-          <div className="space-y-3">
-            <label className="space-y-1 text-sm">
-              <span className="font-medium">Nombre del firmante</span>
-              <input
-                value={form.nombreFirmante}
-                onChange={(e) => setForm({ ...form, nombreFirmante: e.target.value })}
-                disabled={soloLectura}
-                className="input"
-              />
-            </label>
-            <label className="space-y-1 text-sm">
-              <span className="font-medium">Puesto</span>
-              <input
-                value={form.puesto}
-                onChange={(e) => setForm({ ...form, puesto: e.target.value })}
-                disabled={soloLectura}
-                className="input"
-              />
-            </label>
-          </div>
-        </div>
+        <label className="block space-y-1 text-sm">
+          <span className="font-medium">Profesión y nombre de la persona a quien va dirigido</span>
+          <input
+            value={form.dirigidoA}
+            onChange={(e) => setForm({ ...form, dirigidoA: e.target.value })}
+            placeholder="Lic. María González Ramírez"
+            disabled={soloLectura}
+            className="input"
+          />
+          <p className="text-[11px] text-[var(--muted)]">
+            Incluye el tratamiento o profesión si aplica (Lic., Ing., Dr., Dra., Mtro., Mtra., C.P.,
+            Arq.). Aparece en el encabezado del manifiesto.
+          </p>
+        </label>
 
         <label className="block space-y-1 text-sm">
           <span className="font-medium">Texto</span>
@@ -428,6 +410,31 @@ export default function ManifiestoForm({
             className="input"
           />
         </label>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <label className="space-y-1 text-sm">
+            <span className="font-medium">Nombre(s) de quien emite el manifiesto</span>
+            <input
+              value={form.nombreFirmante}
+              onChange={(e) => setForm({ ...form, nombreFirmante: e.target.value })}
+              disabled={soloLectura}
+              className="input"
+            />
+          </label>
+          <label className="space-y-1 text-sm">
+            <span className="font-medium">Puesto</span>
+            <input
+              value={form.puesto}
+              onChange={(e) => setForm({ ...form, puesto: e.target.value })}
+              disabled={soloLectura}
+              className="input"
+            />
+          </label>
+        </div>
+        <p className="text-[11px] text-[var(--muted)]">
+          Nombre y puesto de quien firma el manifiesto (distinto de la persona a quien va dirigido).
+          Aparecen en el pie del documento, junto con la firma.
+        </p>
 
         <div className="space-y-1 text-sm">
           <span className="font-medium">Firma</span>

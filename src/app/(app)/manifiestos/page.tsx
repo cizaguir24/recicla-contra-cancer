@@ -15,7 +15,7 @@ type ManifiestoItem = {
   fechaManifiesto: string;
   fechaInicioPeriodo: string;
   fechaFinPeriodo: string;
-  titulo: string;
+  dirigidoA: string;
   nombreFirmante: string;
   puesto: string;
   totalKg: number | null;
@@ -68,7 +68,7 @@ export default function ManifiestosPage() {
       if (filtroPunto && m.puntoAcopioId !== filtroPunto) return false;
       if (filtroEstatus && m.estatus !== filtroEstatus) return false;
       if (qNorm) {
-        const texto = `${m.puntoAcopio.nombre} ${m.titulo} ${m.nombreFirmante}`.toLowerCase();
+        const texto = `${m.puntoAcopio.nombre} ${m.dirigidoA} ${m.nombreFirmante}`.toLowerCase();
         if (!texto.includes(qNorm)) return false;
       }
       return true;
@@ -117,7 +117,7 @@ export default function ManifiestosPage() {
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Benefactor, título, firmante..."
+              placeholder="Benefactor, dirigido a, firmante..."
               className="input pl-8"
             />
           </div>
@@ -165,7 +165,9 @@ export default function ManifiestosPage() {
                   {ESTATUS_LABEL[m.estatus]}
                 </span>
               </div>
-              <p className="mb-3 text-xs text-[var(--muted)]">{m.titulo}</p>
+              {m.dirigidoA && (
+                <p className="mb-3 text-xs text-[var(--muted)]">Dirigido a: {m.dirigidoA}</p>
+              )}
 
               <div className="mb-3 grid grid-cols-2 gap-x-3 gap-y-2 rounded-lg bg-white/40 p-3 text-xs">
                 <div className="col-span-2">
@@ -185,7 +187,7 @@ export default function ManifiestosPage() {
                   </p>
                 </div>
                 <div className="col-span-2">
-                  <p className="text-[var(--muted)]">Firmante</p>
+                  <p className="text-[var(--muted)]">Emite y firma</p>
                   <p className="font-medium text-[var(--foreground)]">
                     {m.nombreFirmante || "—"} {m.puesto ? `· ${m.puesto}` : ""}
                   </p>

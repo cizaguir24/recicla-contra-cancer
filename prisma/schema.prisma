@@ -86,9 +86,10 @@ model Manifiesto {
   fechaManifiesto    DateTime
   fechaInicioPeriodo DateTime
   fechaFinPeriodo    DateTime
-  titulo             String
-  nombreFirmante     String
-  puesto             String
+  titulo             String // legado: ya no se usa en UI/PDF, se conserva por manifiestos históricos
+  dirigidoA          String @default("") // profesión y nombre de la persona a quien va dirigido (encabezado)
+  nombreFirmante     String // nombre(s) de quien emite/firma el manifiesto (pie)
+  puesto             String // puesto de quien emite/firma el manifiesto (pie)
   texto              String
   textoCierre        String @default("")
   firmaDataUrl       String? // imagen de la firma en base64 (data URL)

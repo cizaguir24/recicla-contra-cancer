@@ -7,7 +7,7 @@ const SELECT_LISTA = {
   fechaManifiesto: true,
   fechaInicioPeriodo: true,
   fechaFinPeriodo: true,
-  titulo: true,
+  dirigidoA: true,
   nombreFirmante: true,
   puesto: true,
   totalKg: true,
@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
       }),
       ...(q && {
         OR: [
-          { titulo: { contains: q } },
+          { dirigidoA: { contains: q } },
           { nombreFirmante: { contains: q } },
           { puntoAcopio: { nombre: { contains: q } } },
         ],
@@ -72,7 +72,8 @@ export async function POST(request: NextRequest) {
       fechaManifiesto: body.fechaManifiesto ? new Date(body.fechaManifiesto) : new Date(),
       fechaInicioPeriodo: new Date(body.fechaInicioPeriodo),
       fechaFinPeriodo: new Date(body.fechaFinPeriodo),
-      titulo: body.titulo || "",
+      titulo: "",
+      dirigidoA: body.dirigidoA || "",
       nombreFirmante: body.nombreFirmante || "",
       puesto: body.puesto || "",
       texto: body.texto || "",

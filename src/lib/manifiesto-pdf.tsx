@@ -12,7 +12,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 16, fontFamily: "Helvetica-Bold", color: "#2563eb" },
   headerSubtitle: { fontSize: 9, color: "#6b7280", marginTop: 2 },
-  titulo: { fontSize: 14, fontFamily: "Helvetica-Bold", marginBottom: 4 },
+  dirigidoA: { fontSize: 12, fontFamily: "Helvetica-Bold", marginBottom: 12 },
   fechaEmision: { fontSize: 9, color: "#6b7280", marginBottom: 16 },
   section: { marginBottom: 14 },
   sectionTitle: { fontSize: 10, fontFamily: "Helvetica-Bold", marginBottom: 4, color: "#6b7280" },
@@ -49,8 +49,8 @@ const styles = StyleSheet.create({
   totalValor: { width: "30%", textAlign: "right", fontFamily: "Helvetica-Bold", fontSize: 10 },
   textoCierre: { fontSize: 10, lineHeight: 1.5, marginTop: 16 },
   firmaBlock: { marginTop: 36, alignItems: "center" },
-  firmaNombre: { fontFamily: "Helvetica-Bold", fontSize: 10 },
-  firmaImg: { width: 140, height: 60, objectFit: "contain", marginTop: 10 },
+  firmaNombre: { fontFamily: "Helvetica-Bold", fontSize: 10, marginTop: 10 },
+  firmaImg: { width: 140, height: 60, objectFit: "contain" },
   footer: {
     position: "absolute",
     bottom: 24,
@@ -82,7 +82,7 @@ function fmtKg(n: number) {
 }
 
 export type ManifiestoDocumentProps = {
-  titulo: string;
+  dirigidoA: string;
   fechaManifiesto: Date | string;
   fechaInicioPeriodo: Date | string;
   fechaFinPeriodo: Date | string;
@@ -99,7 +99,7 @@ export type ManifiestoDocumentProps = {
 };
 
 export function ManifiestoDocument({
-  titulo,
+  dirigidoA,
   fechaManifiesto,
   fechaInicioPeriodo,
   fechaFinPeriodo,
@@ -124,10 +124,8 @@ export function ManifiestoDocument({
           <Text style={styles.headerSubtitle}>Un proyecto original de Cómplices AC</Text>
         </View>
 
-        {/* 1. Título */}
-        <Text style={styles.titulo}>{titulo}</Text>
-        {/* 2. Fecha de emisión */}
-        <Text style={styles.fechaEmision}>Fecha de emisión: {fmtFecha(fechaManifiesto)}</Text>
+        {/* 2. Profesión y nombre de la persona a quien va dirigido */}
+        {dirigidoA && <Text style={styles.dirigidoA}>{dirigidoA}</Text>}
 
         {/* 3. Nombre del benefactor o empresa */}
         <View style={styles.section}>
@@ -140,14 +138,17 @@ export function ManifiestoDocument({
           </Text>
         </View>
 
-        {/* 4. Texto inicial de agradecimiento */}
+        {/* 4. Fecha de emisión */}
+        <Text style={styles.fechaEmision}>Fecha de emisión: {fmtFecha(fechaManifiesto)}</Text>
+
+        {/* 5. Texto inicial */}
         {parrafos.map((p, i) => (
           <Text key={i} style={styles.texto}>
             {p}
           </Text>
         ))}
 
-        {/* 5-6. Tabla de acopios y total acumulado */}
+        {/* 6-7. Tabla de acopios y total acumulado */}
         <View style={styles.table}>
           <View style={styles.tableHeader} fixed>
             <Text style={[styles.colFecha, styles.tableHeaderText]}>Fecha</Text>
@@ -167,14 +168,14 @@ export function ManifiestoDocument({
           </View>
         </View>
 
-        {/* 7. Texto de cierre */}
+        {/* 8. Texto de cierre */}
         {textoCierre ? <Text style={styles.textoCierre}>{textoCierre}</Text> : null}
 
-        {/* 8-10. Nombre, puesto y firma */}
+        {/* 9-11. Firma, nombre y puesto de quien emite el manifiesto */}
         <View style={styles.firmaBlock} wrap={false}>
+          {firmaDataUrl && <Image src={firmaDataUrl} style={styles.firmaImg} />}
           <Text style={styles.firmaNombre}>{nombreFirmante}</Text>
           <Text style={styles.label}>{puesto}</Text>
-          {firmaDataUrl && <Image src={firmaDataUrl} style={styles.firmaImg} />}
         </View>
 
         <Text style={styles.footer} fixed>

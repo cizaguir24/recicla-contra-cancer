@@ -25,8 +25,8 @@ export async function POST(_request: NextRequest, { params }: Context) {
 
   const faltantes: string[] = [];
   if (!manifiesto.puntoAcopioId) faltantes.push("punto de acopio");
-  if (!manifiesto.titulo) faltantes.push("título");
-  if (!manifiesto.nombreFirmante) faltantes.push("nombre del firmante");
+  if (!manifiesto.dirigidoA) faltantes.push("profesión y nombre de la persona a quien va dirigido");
+  if (!manifiesto.nombreFirmante) faltantes.push("nombre de quien emite el manifiesto");
   if (!manifiesto.puesto) faltantes.push("puesto");
   if (!manifiesto.texto) faltantes.push("texto");
   if (!manifiesto.firmaDataUrl) faltantes.push("firma");
@@ -71,7 +71,7 @@ export async function POST(_request: NextRequest, { params }: Context) {
 
   const buffer = await renderToBuffer(
     ManifiestoDocument({
-      titulo: manifiesto.titulo,
+      dirigidoA: manifiesto.dirigidoA,
       fechaManifiesto: manifiesto.fechaManifiesto,
       fechaInicioPeriodo: manifiesto.fechaInicioPeriodo,
       fechaFinPeriodo: manifiesto.fechaFinPeriodo,
