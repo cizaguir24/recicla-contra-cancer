@@ -30,8 +30,14 @@ type ManifiestoDetalle = {
   nombreFirmante: string;
   puesto: string;
   texto: string;
+  textoCierre: string;
   firmaDataUrl: string | null;
   estatus: string;
+};
+
+type ConfiguracionManifiesto = {
+  textoDefault: string;
+  textoCierreDefault: string;
 };
 
 const hoy = () => new Date().toISOString().slice(0, 10);
@@ -45,6 +51,7 @@ const FORM_VACIO = {
   nombreFirmante: "",
   puesto: "",
   texto: "",
+  textoCierre: "",
   firmaDataUrl: "",
 };
 
@@ -69,11 +76,20 @@ export default function ManifiestoForm({
   const [generando, setGenerando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [soloLectura, setSoloLectura] = useState(false);
+  const [configDefault, setConfigDefault] = useState<ConfiguracionManifiesto | null>(null);
+  const [textoTocado, setTextoTocado] = useState(false);
+  const [textoCierreTocado, setTextoCierreTocado] = useState(false);
 
   useEffect(() => {
     fetch("/api/puntos-acopio")
       .then((r) => r.json())
       .then(setPuntos);
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/configuracion/manifiestos")
+      .then((r) => r.json())
+      .then(setConfigDefault);
   }, []);
 
   useEffect(() => {
@@ -90,14 +106,38 @@ export default function ManifiestoForm({
           nombreFirmante: m.nombreFirmante,
           puesto: m.puesto,
           texto: m.texto,
+          textoCierre: m.textoCierre,
           firmaDataUrl: m.firmaDataUrl ?? "",
         });
+        // Ya tiene contenido propio: no sobrescribir con la plantilla general.
+        setTextoTocado(true);
+        setTextoCierreTocado(true);
         setSoloLectura(m.estatus !== "borrador");
         setCargando(false);
       });
   }, [manifiestoIdInicial]);
 
   const puntoSeleccionado = puntos.find((p) => p.id === form.puntoAcopioId) ?? null;
+
+  // Carga (o recarga al cambiar de punto) el texto predeterminado de la plantilla
+  // general, sustituyendo {nombre de la empresa} por el benefactor seleccionado.
+  // Solo mientras el usuario no haya editado el texto a mano.
+  useEffect(() => {
+    if (manifiestoIdInicial || !configDefault || !puntoSeleccionado) return;
+    if (!textoTocado) {
+      setForm((f) => ({
+        ...f,
+        texto: configDefault.textoDefault.replaceAll(
+          "{nombre de la empresa}",
+          puntoSeleccionado.nombre,
+        ),
+      }));
+    }
+    if (!textoCierreTocado) {
+      setForm((f) => ({ ...f, textoCierre: configDefault.textoCierreDefault }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [configDefault, puntoSeleccionado?.id, manifiestoIdInicial]);
 
   const cargarAcopios = useCallback(async () => {
     if (!form.puntoAcopioId || !form.fechaInicioPeriodo || !form.fechaFinPeriodo) {
@@ -323,47 +363,72 @@ export default function ManifiestoForm({
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-3 rounded-xl border border-white/50 bg-white/40 backdrop-blur-md p-4">
-        <label className="space-y-1 text-sm">
-          <span className="font-medium">Título</span>
-          <input
-            value={form.titulo}
-            onChange={(e) => setForm({ ...form, titulo: e.target.value })}
-            placeholder="Manifiesto de Acopio"
-            disabled={soloLectura}
-            className="input"
-          />
-        </label>
-        <label className="space-y-1 text-sm">
+      <div className="space-y-3 rounded-xl border border-white/50 bg-white/40 backdrop-blur-md p-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <label className="space-y-1 text-sm">
+            <span className="font-medium">Título</span>
+            <input
+              value={form.titulo}
+              onChange={(e) => setForm({ ...form, titulo: e.target.value })}
+              placeholder="Manifiesto de Acopio"
+              disabled={soloLectura}
+              className="input"
+            />
+          </label>
+          <div className="space-y-3">
+            <label className="space-y-1 text-sm">
+              <span className="font-medium">Nombre del firmante</span>
+              <input
+                value={form.nombreFirmante}
+                onChange={(e) => setForm({ ...form, nombreFirmante: e.target.value })}
+                disabled={soloLectura}
+                className="input"
+              />
+            </label>
+            <label className="space-y-1 text-sm">
+              <span className="font-medium">Puesto</span>
+              <input
+                value={form.puesto}
+                onChange={(e) => setForm({ ...form, puesto: e.target.value })}
+                disabled={soloLectura}
+                className="input"
+              />
+            </label>
+          </div>
+        </div>
+
+        <label className="block space-y-1 text-sm">
           <span className="font-medium">Texto</span>
           <textarea
             value={form.texto}
-            onChange={(e) => setForm({ ...form, texto: e.target.value })}
-            rows={4}
+            onChange={(e) => {
+              setTextoTocado(true);
+              setForm({ ...form, texto: e.target.value });
+            }}
+            rows={6}
+            disabled={soloLectura}
+            className="input"
+          />
+          <p className="text-[11px] text-[var(--muted)]">
+            Se carga desde la plantilla general (Configuración) con el benefactor ya sustituido.
+            Puedes editarlo solo para este manifiesto.
+          </p>
+        </label>
+
+        <label className="block space-y-1 text-sm">
+          <span className="font-medium">Texto de cierre</span>
+          <textarea
+            value={form.textoCierre}
+            onChange={(e) => {
+              setTextoCierreTocado(true);
+              setForm({ ...form, textoCierre: e.target.value });
+            }}
+            rows={2}
             disabled={soloLectura}
             className="input"
           />
         </label>
-        <div className="grid grid-cols-2 gap-3">
-          <label className="space-y-1 text-sm">
-            <span className="font-medium">Nombre del firmante</span>
-            <input
-              value={form.nombreFirmante}
-              onChange={(e) => setForm({ ...form, nombreFirmante: e.target.value })}
-              disabled={soloLectura}
-              className="input"
-            />
-          </label>
-          <label className="space-y-1 text-sm">
-            <span className="font-medium">Puesto</span>
-            <input
-              value={form.puesto}
-              onChange={(e) => setForm({ ...form, puesto: e.target.value })}
-              disabled={soloLectura}
-              className="input"
-            />
-          </label>
-        </div>
+
         <div className="space-y-1 text-sm">
           <span className="font-medium">Firma</span>
           {!soloLectura && (

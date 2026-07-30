@@ -79,6 +79,7 @@ export async function POST(_request: NextRequest, { params }: Context) {
       puntoNombre: manifiesto.puntoAcopio.nombre,
       direccionCompleta,
       texto: manifiesto.texto,
+      textoCierre: manifiesto.textoCierre,
       filas,
       total,
       nombreFirmante: manifiesto.nombreFirmante,

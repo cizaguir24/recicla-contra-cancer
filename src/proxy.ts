@@ -25,7 +25,9 @@ export default auth((req) => {
 
     if (isApiRoute && isWrite) {
       const bloqueado =
-        ((pathname.startsWith("/api/usuarios") || pathname.startsWith("/api/roles")) &&
+        ((pathname.startsWith("/api/usuarios") ||
+          pathname.startsWith("/api/roles") ||
+          pathname.startsWith("/api/configuracion")) &&
           !permisos?.configuracion) ||
         (pathname.startsWith("/api/puntos-acopio") && !permisos?.puntosAcopio) ||
         (pathname.startsWith("/api/fechas-acopio") && !permisos?.fechasAcopio) ||

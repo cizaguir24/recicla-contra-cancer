@@ -87,6 +87,7 @@ model Manifiesto {
   nombreFirmante     String
   puesto             String
   texto              String
+  textoCierre        String @default("")
   firmaDataUrl       String? // imagen de la firma en base64 (data URL)
   pdfData            Bytes? // PDF generado, inmutable una vez creado
   totalKg            Float? // total acumulado al momento de generar el PDF
@@ -94,4 +95,12 @@ model Manifiesto {
   generadoAt         DateTime?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
+}
+
+// Fila única con la configuración general de la plantilla de Manifiestos.
+model ConfiguracionManifiesto {
+  id                 String   @id @default("singleton")
+  textoDefault       String
+  textoCierreDefault String
+  updatedAt          DateTime @updatedAt
 }

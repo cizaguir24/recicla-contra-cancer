@@ -21,8 +21,8 @@ import { PermisosProvider } from "@/lib/role-context";
 import type { Permisos } from "@/lib/roles";
 
 const NAV = [
-  { href: "/reportes/puntos-acopio", label: "Reporte", icon: ClipboardList },
   { href: "/reportes/desempeno", label: "Desempeño", icon: Gauge },
+  { href: "/reportes/puntos-acopio", label: "Reporte", icon: ClipboardList },
   { href: "/puntos-acopio", label: "Puntos de Acopio", icon: MapPin },
   { href: "/fechas-acopio", label: "Fechas de Acopio", icon: CalendarDays },
   { href: "/manifiestos", label: "Manifiestos", icon: FileText },

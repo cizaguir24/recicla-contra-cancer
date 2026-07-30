@@ -20,6 +20,7 @@ export async function POST(_request: NextRequest, { params }: Context) {
       nombreFirmante: original.nombreFirmante,
       puesto: original.puesto,
       texto: original.texto,
+      textoCierre: original.textoCierre,
       firmaDataUrl: original.firmaDataUrl,
       estatus: "borrador",
     },

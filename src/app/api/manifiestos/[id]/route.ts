@@ -13,6 +13,7 @@ const SELECT_DETALLE = {
   nombreFirmante: true,
   puesto: true,
   texto: true,
+  textoCierre: true,
   firmaDataUrl: true,
   totalKg: true,
   estatus: true,
@@ -73,6 +74,7 @@ export async function PATCH(request: NextRequest, { params }: Context) {
   if ("nombreFirmante" in body) data.nombreFirmante = body.nombreFirmante;
   if ("puesto" in body) data.puesto = body.puesto;
   if ("texto" in body) data.texto = body.texto;
+  if ("textoCierre" in body) data.textoCierre = body.textoCierre;
   if ("firmaDataUrl" in body) data.firmaDataUrl = body.firmaDataUrl || null;
 
   const manifiesto = await prisma.manifiesto.update({

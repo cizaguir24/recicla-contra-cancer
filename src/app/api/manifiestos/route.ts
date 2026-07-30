@@ -76,6 +76,7 @@ export async function POST(request: NextRequest) {
       nombreFirmante: body.nombreFirmante || "",
       puesto: body.puesto || "",
       texto: body.texto || "",
+      textoCierre: body.textoCierre || "",
       firmaDataUrl: body.firmaDataUrl || null,
       estatus: "borrador",
     },
