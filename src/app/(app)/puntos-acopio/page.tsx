@@ -2,10 +2,20 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { MapPin, Phone, Pencil, Trash2, PackageSearch, FileText, X } from "lucide-react";
+import dynamic from "next/dynamic";
+import { MapPin, Phone, Pencil, Trash2, PackageSearch, FileText, X, Map as MapIcon } from "lucide-react";
 import { usePermisos } from "@/lib/role-context";
 import SearchBar from "@/components/SearchBar";
 import { coincideBusqueda } from "@/lib/texto";
+
+const PuntosAcopioMap = dynamic(() => import("@/components/PuntosAcopioMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-80 items-center justify-center rounded-xl border border-white/60 bg-white/20 text-sm text-[var(--muted)] sm:h-96">
+      Cargando mapa…
+    </div>
+  ),
+});
 
 type PuntoAcopio = {
   id: string;
@@ -17,6 +27,8 @@ type PuntoAcopio = {
   responsable: string | null;
   contacto: string | null;
   activo: boolean;
+  lat: number | null;
+  lng: number | null;
 };
 
 const FORM_INICIAL = {
@@ -39,6 +51,7 @@ export default function PuntosAcopioPage() {
   const [form, setForm] = useState(FORM_INICIAL);
   const [guardando, setGuardando] = useState(false);
   const [busqueda, setBusqueda] = useState("");
+  const [mostrarMapa, setMostrarMapa] = useState(true);
 
   const cargarPuntos = useCallback(async () => {
     setCargando(true);
@@ -119,15 +132,25 @@ export default function PuntosAcopioPage() {
             {puntosFiltrados.length === 1 ? "" : "s"}
           </p>
         </div>
-        {esAdmin && (
+        <div className="flex items-center gap-2">
           <button
-            onClick={abrirNuevo}
-            className="rounded-xl bg-[var(--brand-blue)] px-3 py-2 text-sm font-medium text-[var(--accent-foreground)] shadow-sm"
+            onClick={() => setMostrarMapa((v) => !v)}
+            className="flex items-center gap-1.5 rounded-xl border border-[var(--brand-blue)] px-3 py-2 text-sm font-medium text-[var(--brand-blue)] hover:bg-white/40"
           >
-            + Nuevo punto
+            <MapIcon className="h-4 w-4" /> {mostrarMapa ? "Ocultar mapa" : "Ver mapa"}
           </button>
-        )}
+          {esAdmin && (
+            <button
+              onClick={abrirNuevo}
+              className="rounded-xl bg-[var(--brand-blue)] px-3 py-2 text-sm font-medium text-[var(--accent-foreground)] shadow-sm"
+            >
+              + Nuevo punto
+            </button>
+          )}
+        </div>
       </div>
+
+      {mostrarMapa && <PuntosAcopioMap puntos={puntosFiltrados} />}
 
       <SearchBar value={busqueda} onChange={setBusqueda} className="sm:max-w-md" />
 

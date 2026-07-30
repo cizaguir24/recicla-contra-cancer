@@ -13,6 +13,7 @@ import {
   getEmail,
   type NotionPage,
 } from "@/lib/notion";
+import { geocodificarDireccion, esperar } from "@/lib/geocode";
 
 const ACOPIOS_2026_DATA_SOURCE_ID = "2dcbc6f4-11db-81d0-8cb2-000bb99aafb0";
 const UBICACIONES_DATA_SOURCE_ID = "f6e38491-8e9b-4008-9386-4201289ad652";
@@ -54,6 +55,14 @@ function datosPuntoDesdeNotion(ubicacionPage: NotionPage) {
   };
 }
 
+function direccionCompletaParaGeocodificar(datos: {
+  direccion: string;
+  zona: string | null;
+  estado: string | null;
+}) {
+  return [datos.direccion, datos.zona, datos.estado].filter(Boolean).join(", ");
+}
+
 export async function sincronizarNotion() {
   // 1. Sincroniza TODAS las ubicaciones de Notion como Puntos de Acopio,
   //    tengan o no acopios capturados todavía (ej. benefactores nuevos).
@@ -61,22 +70,51 @@ export async function sincronizarNotion() {
   const puntoIdPorUbicacion = new Map<string, string>();
   let puntosCreados = 0;
   let puntosActualizados = 0;
+  let puntosGeocodificados = 0;
 
   for (const ubicacionPage of ubicaciones) {
     const datos = datosPuntoDesdeNotion(ubicacionPage);
+    const direccionCompleta = direccionCompletaParaGeocodificar(datos);
 
     const existente = await prisma.puntoAcopio.findUnique({
       where: { notionPageId: ubicacionPage.id },
     });
 
+    // Solo se geocodifica cuando es nuevo o cuando la dirección cambió desde
+    // la última vez, para no repetir llamadas innecesarias en cada sync.
+    let datosGeo: { lat?: number | null; lng?: number | null; geocodificadoDireccion?: string } = {};
+    if (direccionCompleta && existente?.geocodificadoDireccion !== direccionCompleta) {
+      let coords = await geocodificarDireccion(direccionCompleta);
+      await esperar(1000); // respeta el límite de 1 solicitud/segundo de Nominatim
+
+      // La dirección exacta de Notion suele ser demasiado imprecisa para
+      // Nominatim; si falla, se intenta con municipio/estado (menos preciso
+      // pero mucho más confiable) para no dejar el punto sin ubicar.
+      if (!coords) {
+        const municipioEstado = [datos.zona, datos.estado].filter(Boolean).join(", ");
+        if (municipioEstado) {
+          coords = await geocodificarDireccion(municipioEstado);
+          await esperar(1000);
+        }
+      }
+
+      datosGeo = {
+        lat: coords?.lat ?? null,
+        lng: coords?.lng ?? null,
+        geocodificadoDireccion: direccionCompleta,
+      };
+      puntosGeocodificados++;
+    }
+
     const punto = await prisma.puntoAcopio.upsert({
       where: { notionPageId: ubicacionPage.id },
       create: {
         ...datos,
+        ...datosGeo,
         materiales: "tapas, PET, aluminio",
         notionPageId: ubicacionPage.id,
       },
-      update: datos,
+      update: { ...datos, ...datosGeo },
     });
 
     if (existente) puntosActualizados++;
@@ -152,5 +190,6 @@ export async function sincronizarNotion() {
     puntosCreados,
     puntosActualizados,
     puntosTotal: ubicaciones.length,
+    puntosGeocodificados,
   };
 }

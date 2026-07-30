@@ -50,6 +50,9 @@ model PuntoAcopio {
   numeroCelular String?      // "Numero Celular" de Notion
   correoElectronico String?  // "Correo electrónico" de Notion
   estado       String?       // "Estado" de Notion (dirección)
+  lat          Float?        // geocodificado desde dirección/zona/estado (OpenStreetMap Nominatim)
+  lng          Float?
+  geocodificadoDireccion String? // dirección exacta con la que se geocodificó, para saber si hay que repetir
   notionPageId String?       @unique // id de la página "Ubicación" en Notion, si vino de un sync
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
