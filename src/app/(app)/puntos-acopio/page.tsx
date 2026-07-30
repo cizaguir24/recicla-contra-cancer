@@ -268,7 +268,7 @@ export default function PuntosAcopioPage() {
       )}
 
       {mostrarForm && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/20 px-4 py-8 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[1100] flex items-start justify-center overflow-y-auto bg-black/20 px-4 py-8 backdrop-blur-sm">
           <div className="w-full max-w-md max-h-full overflow-y-auto rounded-2xl border border-white/50 bg-white/70 p-6 shadow-2xl backdrop-blur-xl backdrop-saturate-150">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold">
