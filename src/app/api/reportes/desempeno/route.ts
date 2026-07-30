@@ -50,6 +50,7 @@ export async function GET() {
       id: punto.id,
       nombre: punto.nombre,
       municipio: punto.zona,
+      responsable: punto.responsable,
       tipoContenedor: punto.tipoContenedor,
       decisionReubicacion: punto.decisionReubicacion,
       numeroCelular: punto.numeroCelular,

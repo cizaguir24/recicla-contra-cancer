@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { MapPin, Phone, Mail, PackageSearch, Pencil, X } from "lucide-react";
 import { usePermisos } from "@/lib/role-context";
+import SearchBar from "@/components/SearchBar";
+import { coincideBusqueda } from "@/lib/texto";
 
 type ColorSemaforo = "pink" | "amber" | "green";
 
@@ -21,6 +23,7 @@ type FilaDesempeno = {
   id: string;
   nombre: string;
   municipio: string | null;
+  responsable: string | null;
   tipoContenedor: string | null;
   decisionReubicacion: string | null;
   numeroCelular: string | null;
@@ -111,6 +114,7 @@ export default function DesempenoPage() {
   const [filas, setFilas] = useState<FilaDesempeno[]>([]);
   const [cargando, setCargando] = useState(true);
   const [filtroContenedor, setFiltroContenedor] = useState("");
+  const [busqueda, setBusqueda] = useState("");
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [form, setForm] = useState(FORM_EDICION_VACIO);
   const [guardando, setGuardando] = useState(false);
@@ -166,10 +170,19 @@ export default function DesempenoPage() {
   const hayFilasSinContenedor = useMemo(() => filas.some((f) => !f.tipoContenedor), [filas]);
 
   const filtradas = useMemo(() => {
-    if (!filtroContenedor) return filas;
-    if (filtroContenedor === SIN_CONTENEDOR) return filas.filter((f) => !f.tipoContenedor);
-    return filas.filter((f) => f.tipoContenedor === filtroContenedor);
-  }, [filas, filtroContenedor]);
+    let resultado = filas;
+    if (filtroContenedor === SIN_CONTENEDOR) {
+      resultado = resultado.filter((f) => !f.tipoContenedor);
+    } else if (filtroContenedor) {
+      resultado = resultado.filter((f) => f.tipoContenedor === filtroContenedor);
+    }
+    if (busqueda) {
+      resultado = resultado.filter((f) =>
+        coincideBusqueda(busqueda, f.nombre, f.municipio, f.responsable),
+      );
+    }
+    return resultado;
+  }, [filas, filtroContenedor, busqueda]);
 
   const totales = useMemo<Totales>(
     () => ({
@@ -201,8 +214,12 @@ export default function DesempenoPage() {
         </button>
       </div>
 
-      <div className="rounded-xl border border-white/50 bg-white/40 backdrop-blur-md p-4 sm:max-w-xs">
+      <div className="grid grid-cols-1 gap-3 rounded-xl border border-white/50 bg-white/40 backdrop-blur-md p-4 sm:grid-cols-[1fr_auto] sm:items-end">
         <label className="space-y-1 text-sm">
+          <span className="font-medium">Buscar</span>
+          <SearchBar value={busqueda} onChange={setBusqueda} />
+        </label>
+        <label className="space-y-1 text-sm sm:w-56">
           <span className="font-medium">Contenedor</span>
           <select
             value={filtroContenedor}
@@ -332,7 +349,19 @@ export default function DesempenoPage() {
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--brand-blue-light)]">
                 <PackageSearch className="h-6 w-6 text-[var(--brand-blue-dark)]" />
               </div>
-              <p className="text-sm text-[var(--muted)]">No hay puntos de acopio con estos filtros.</p>
+              <p className="text-sm text-[var(--muted)]">
+                {busqueda
+                  ? "No se encontraron puntos de acopio que coincidan con tu búsqueda."
+                  : "No hay puntos de acopio con estos filtros."}
+              </p>
+              {busqueda && (
+                <button
+                  onClick={() => setBusqueda("")}
+                  className="text-sm font-medium text-[var(--brand-blue)] hover:underline"
+                >
+                  Limpiar búsqueda
+                </button>
+              )}
             </div>
           )}
         </div>

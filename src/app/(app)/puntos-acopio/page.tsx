@@ -1,9 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { MapPin, Phone, Pencil, Trash2, PackageSearch, FileText, X } from "lucide-react";
 import { usePermisos } from "@/lib/role-context";
+import SearchBar from "@/components/SearchBar";
+import { coincideBusqueda } from "@/lib/texto";
 
 type PuntoAcopio = {
   id: string;
@@ -36,6 +38,7 @@ export default function PuntosAcopioPage() {
   const [mostrarForm, setMostrarForm] = useState(false);
   const [form, setForm] = useState(FORM_INICIAL);
   const [guardando, setGuardando] = useState(false);
+  const [busqueda, setBusqueda] = useState("");
 
   const cargarPuntos = useCallback(async () => {
     setCargando(true);
@@ -99,14 +102,21 @@ export default function PuntosAcopioPage() {
     await cargarPuntos();
   }
 
+  const puntosFiltrados = useMemo(() => {
+    if (!busqueda) return puntos;
+    return puntos.filter((p) =>
+      coincideBusqueda(busqueda, p.nombre, p.zona, p.responsable),
+    );
+  }, [puntos, busqueda]);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold">Puntos de Acopio</h1>
           <p className="text-sm text-foreground/60">
-            {puntos.length} punto{puntos.length === 1 ? "" : "s"} registrado
-            {puntos.length === 1 ? "" : "s"}
+            {puntosFiltrados.length} punto{puntosFiltrados.length === 1 ? "" : "s"} registrado
+            {puntosFiltrados.length === 1 ? "" : "s"}
           </p>
         </div>
         {esAdmin && (
@@ -119,11 +129,13 @@ export default function PuntosAcopioPage() {
         )}
       </div>
 
+      <SearchBar value={busqueda} onChange={setBusqueda} className="sm:max-w-md" />
+
       {cargando ? (
         <p className="text-sm text-foreground/60">Cargando...</p>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {puntos.map((p) => (
+          {puntosFiltrados.map((p) => (
             <div
               key={p.id}
               className="rounded-xl border border-white/60 bg-white/40 p-4 shadow-lg shadow-black/5 backdrop-blur-md backdrop-saturate-150"
@@ -202,12 +214,24 @@ export default function PuntosAcopioPage() {
               </div>
             </div>
           ))}
-          {puntos.length === 0 && (
+          {puntosFiltrados.length === 0 && (
             <div className="col-span-full flex min-h-[30vh] flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-white/60 bg-white/20 text-center backdrop-blur-sm">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--brand-blue-light)]">
                 <PackageSearch className="h-6 w-6 text-[var(--brand-blue-dark)]" />
               </div>
-              <p className="text-sm text-[var(--muted)]">No hay puntos de acopio registrados.</p>
+              <p className="text-sm text-[var(--muted)]">
+                {busqueda
+                  ? "No se encontraron puntos de acopio que coincidan con tu búsqueda."
+                  : "No hay puntos de acopio registrados."}
+              </p>
+              {busqueda && (
+                <button
+                  onClick={() => setBusqueda("")}
+                  className="text-sm font-medium text-[var(--brand-blue)] hover:underline"
+                >
+                  Limpiar búsqueda
+                </button>
+              )}
             </div>
           )}
         </div>
