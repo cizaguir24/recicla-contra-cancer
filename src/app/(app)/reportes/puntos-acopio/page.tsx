@@ -20,6 +20,30 @@ type FechaAcopio = {
 
 const ESTADOS = ["programada", "realizada", "cancelada"];
 
+const ESTADO_BADGE: Record<string, string> = {
+  programada: "bg-gray-100 text-gray-600",
+  realizada: "bg-green-100 text-green-700",
+  cancelada: "bg-red-100 text-red-600",
+};
+
+const ESTADO_LABEL: Record<string, string> = {
+  programada: "Programada",
+  realizada: "Realizada",
+  cancelada: "Cancelada",
+};
+
+function CeldaKg({ kg }: { kg: number | null }) {
+  if (!kg) {
+    return <span className="text-[var(--muted)]">—</span>;
+  }
+  return (
+    <>
+      <span className="font-medium text-[var(--foreground)]">{kg.toFixed(2)}</span>{" "}
+      <span className="text-[var(--muted)]">kg</span>
+    </>
+  );
+}
+
 function exportarCSV(filas: FechaAcopio[]) {
   const encabezados = [
     "Punto de acopio",
@@ -200,25 +224,37 @@ export default function ReportePuntosAcopioPage() {
               <tr>
                 <th className="px-3 py-2">Punto de acopio</th>
                 <th className="px-3 py-2">Zona</th>
-                <th className="px-3 py-2">Fecha</th>
+                <th className="px-3 py-2 whitespace-nowrap">Fecha</th>
                 <th className="px-3 py-2">Estado</th>
-                <th className="px-3 py-2">Kgs Tapas</th>
-                <th className="px-3 py-2">Kgs PET</th>
-                <th className="px-3 py-2">Kgs Aluminio</th>
+                <th className="px-3 py-2 text-right">Kgs Tapas</th>
+                <th className="px-3 py-2 text-right">Kgs PET</th>
+                <th className="px-3 py-2 text-right">Kgs Aluminio</th>
                 <th className="px-3 py-2">Notas</th>
               </tr>
             </thead>
             <tbody>
               {filtradas.map((f) => (
-                <tr key={f.id} className="border-t border-white/50">
-                  <td className="px-3 py-2 font-medium">{f.puntoAcopio.nombre}</td>
-                  <td className="px-3 py-2">{f.puntoAcopio.zona}</td>
-                  <td className="px-3 py-2">{f.fecha.slice(0, 10)}</td>
-                  <td className="px-3 py-2 capitalize">{f.estado}</td>
-                  <td className="px-3 py-2">{f.tapasKg ?? "—"}</td>
-                  <td className="px-3 py-2">{f.petKg ?? "—"}</td>
-                  <td className="px-3 py-2">{f.aluminioKg ?? "—"}</td>
-                  <td className="px-3 py-2">{f.notas}</td>
+                <tr key={f.id} className="border-t border-white/50 even:bg-white/20">
+                  <td className="px-3 py-2.5 font-medium">{f.puntoAcopio.nombre}</td>
+                  <td className="px-3 py-2.5 text-[var(--muted)]">{f.puntoAcopio.zona}</td>
+                  <td className="px-3 py-2.5 whitespace-nowrap">{f.fecha.slice(0, 10)}</td>
+                  <td className="px-3 py-2.5">
+                    <span
+                      className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${ESTADO_BADGE[f.estado] ?? "bg-gray-100 text-gray-600"}`}
+                    >
+                      {ESTADO_LABEL[f.estado] ?? f.estado}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2.5 text-right">
+                    <CeldaKg kg={f.tapasKg} />
+                  </td>
+                  <td className="px-3 py-2.5 text-right">
+                    <CeldaKg kg={f.petKg} />
+                  </td>
+                  <td className="px-3 py-2.5 text-right">
+                    <CeldaKg kg={f.aluminioKg} />
+                  </td>
+                  <td className="px-3 py-2.5 text-[var(--muted)]">{f.notas}</td>
                 </tr>
               ))}
               {filtradas.length === 0 && (
