@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePermisos } from "@/lib/role-context";
+import { ESTADO_BADGE, ESTADO_LABEL } from "@/lib/fechas-acopio";
 
 type PuntoAcopio = { id: string; nombre: string };
 
@@ -182,7 +183,7 @@ export default function FechasAcopioPage() {
             <thead className="bg-white/50 text-left">
               <tr>
                 <th className="px-3 py-2">Punto de acopio</th>
-                <th className="px-3 py-2">Fecha</th>
+                <th className="px-3 py-2 whitespace-nowrap">Fecha</th>
                 <th className="px-3 py-2">Estado</th>
                 <th className="px-3 py-2">Notas</th>
                 <th className="px-3 py-2"></th>
@@ -190,12 +191,18 @@ export default function FechasAcopioPage() {
             </thead>
             <tbody>
               {fechas.map((f) => (
-                <tr key={f.id} className="border-t border-white/50">
-                  <td className="px-3 py-2 font-medium">{f.puntoAcopio.nombre}</td>
-                  <td className="px-3 py-2">{f.fecha.slice(0, 10)}</td>
-                  <td className="px-3 py-2 capitalize">{f.estado}</td>
-                  <td className="px-3 py-2">{f.notas}</td>
-                  <td className="px-3 py-2 whitespace-nowrap">
+                <tr key={f.id} className="border-t border-white/50 even:bg-white/20">
+                  <td className="px-3 py-2.5 font-medium">{f.puntoAcopio.nombre}</td>
+                  <td className="px-3 py-2.5 whitespace-nowrap">{f.fecha.slice(0, 10)}</td>
+                  <td className="px-3 py-2.5">
+                    <span
+                      className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${ESTADO_BADGE[f.estado] ?? "bg-gray-100 text-gray-600"}`}
+                    >
+                      {ESTADO_LABEL[f.estado] ?? f.estado}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2.5 text-[var(--muted)]">{f.notas}</td>
+                  <td className="px-3 py-2.5 whitespace-nowrap">
                     {esAdmin && (
                       <>
                         <button

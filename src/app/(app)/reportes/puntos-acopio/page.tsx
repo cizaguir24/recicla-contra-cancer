@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { usePermisos } from "@/lib/role-context";
+import { ESTADO_BADGE, ESTADO_LABEL } from "@/lib/fechas-acopio";
 
 type PuntoAcopio = { id: string; nombre: string; zona: string | null };
 
@@ -19,18 +20,6 @@ type FechaAcopio = {
 };
 
 const ESTADOS = ["programada", "realizada", "cancelada"];
-
-const ESTADO_BADGE: Record<string, string> = {
-  programada: "bg-gray-100 text-gray-600",
-  realizada: "bg-green-100 text-green-700",
-  cancelada: "bg-red-100 text-red-600",
-};
-
-const ESTADO_LABEL: Record<string, string> = {
-  programada: "Programada",
-  realizada: "Realizada",
-  cancelada: "Cancelada",
-};
 
 function CeldaKg({ kg }: { kg: number | null }) {
   if (!kg) {
