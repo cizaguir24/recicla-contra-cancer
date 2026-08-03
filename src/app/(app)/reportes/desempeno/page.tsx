@@ -114,6 +114,7 @@ export default function DesempenoPage() {
   const [filas, setFilas] = useState<FilaDesempeno[]>([]);
   const [cargando, setCargando] = useState(true);
   const [filtroContenedor, setFiltroContenedor] = useState("");
+  const [filtroSemaforo, setFiltroSemaforo] = useState<"" | ColorSemaforo>("");
   const [busqueda, setBusqueda] = useState("");
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [form, setForm] = useState(FORM_EDICION_VACIO);
@@ -176,13 +177,16 @@ export default function DesempenoPage() {
     } else if (filtroContenedor) {
       resultado = resultado.filter((f) => f.tipoContenedor === filtroContenedor);
     }
+    if (filtroSemaforo) {
+      resultado = resultado.filter((f) => f.semaforo.color === filtroSemaforo);
+    }
     if (busqueda) {
       resultado = resultado.filter((f) =>
         coincideBusqueda(busqueda, f.nombre, f.municipio, f.responsable),
       );
     }
     return resultado;
-  }, [filas, filtroContenedor, busqueda]);
+  }, [filas, filtroContenedor, filtroSemaforo, busqueda]);
 
   const totales = useMemo<Totales>(
     () => ({
@@ -214,7 +218,7 @@ export default function DesempenoPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 rounded-xl border border-white/50 bg-white/40 backdrop-blur-md p-4 sm:grid-cols-[1fr_auto] sm:items-end">
+      <div className="grid grid-cols-1 gap-3 rounded-xl border border-white/50 bg-white/40 backdrop-blur-md p-4 sm:grid-cols-[1fr_auto_auto] sm:items-end">
         <label className="space-y-1 text-sm">
           <span className="font-medium">Buscar</span>
           <SearchBar value={busqueda} onChange={setBusqueda} />
@@ -233,6 +237,19 @@ export default function DesempenoPage() {
               </option>
             ))}
             {hayFilasSinContenedor && <option value={SIN_CONTENEDOR}>Sin contenedor</option>}
+          </select>
+        </label>
+        <label className="space-y-1 text-sm sm:w-48">
+          <span className="font-medium">Semáforo</span>
+          <select
+            value={filtroSemaforo}
+            onChange={(e) => setFiltroSemaforo(e.target.value as "" | ColorSemaforo)}
+            className="input"
+          >
+            <option value="">General (todos)</option>
+            <option value="pink">Puntos en rosa</option>
+            <option value="amber">Puntos en amarillo</option>
+            <option value="green">Puntos en verde</option>
           </select>
         </label>
       </div>
