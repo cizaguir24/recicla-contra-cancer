@@ -170,6 +170,7 @@ export type InformesResponse = {
   graficoMensual: { modo: "anioFijo" | "rango"; puntos: PuntoMensual[] };
   materiales: { key: MaterialKey; nombre: string; kg: number; porcentaje: number }[];
   centros: FilaCentroInforme[];
+  manifiestosDirigidos: { nombre: string; puesto: string }[];
   advertencias: {
     sinReporte: { id: string; nombre: string }[];
     incompletos: { id: string; puntoAcopioId: string; nombre: string; fecha: string }[];

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, EyeOff } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { descargarCSV } from "@/lib/csv";
+import { descargarCSV, descargarCSVMultiseccion } from "@/lib/csv";
 import { MATERIALES, MESES_LABEL, type FilaCentroInforme, type InformesResponse, type PeriodoTipo } from "@/lib/informes";
 
 type PuntoAcopioOpcion = {
@@ -199,6 +199,59 @@ export default function InformesPage() {
     );
   }
 
+  function exportarReporteCompleto() {
+    if (!datos) return;
+    const ind = datos.indicadores;
+    descargarCSVMultiseccion(
+      `reporte-informes-${datos.periodo.tipo}-${datos.periodo.anio}-${new Date().toISOString().slice(0, 10)}.csv`,
+      [
+        {
+          titulo: "Resumen del periodo",
+          encabezados: ["Indicador", "Valor"],
+          filas: [
+            ["Total general recolectado", fmtKg(ind.totalKg)],
+            ["Centros que reportaron", ind.totalCentrosReportaron],
+            ["Total de reportes", ind.totalReportes],
+            ["Promedio por centro", fmtKg(ind.promedioPorCentroKg)],
+            [
+              "Material con mayor volumen",
+              ind.materialMayorVolumen
+                ? `${ind.materialMayorVolumen.nombre} (${fmtKg(ind.materialMayorVolumen.kg)})`
+                : "Sin datos",
+            ],
+            [
+              "Centro con mayor desempeño",
+              ind.centroMayorDesempeno
+                ? `${ind.centroMayorDesempeno.nombre} (${fmtKg(ind.centroMayorDesempeno.kg)})`
+                : "Sin datos",
+            ],
+            [
+              "Mes con mayor recolección",
+              ind.mesMayorRecoleccion
+                ? `${MESES_LABEL[ind.mesMayorRecoleccion.mes - 1]} ${ind.mesMayorRecoleccion.anio} (${fmtKg(ind.mesMayorRecoleccion.kg)})`
+                : "Sin datos",
+            ],
+          ],
+        },
+        {
+          titulo: "Recolección mensual",
+          encabezados: ["Mes", "Kg"],
+          filas: datosGrafica.map((p) => [p.etiqueta, p.kg.toFixed(2)]),
+        },
+        {
+          titulo: "Total por tipo de material",
+          encabezados: ["Material", "Kg", "% del total"],
+          filas: datos.materiales.map((m) => [m.nombre, m.kg.toFixed(2), `${m.porcentaje.toFixed(1)}%`]),
+        },
+        {
+          titulo: "Manifiestos generados — dirigido a",
+          encabezados: ["Nombre", "Puesto"],
+          filas: datos.manifiestosDirigidos.map((m) => [m.nombre, m.puesto]),
+        },
+      ],
+    );
+  }
+
   const indicadores = datos?.indicadores ?? null;
 
   return (
@@ -210,13 +263,22 @@ export default function InformesPage() {
             Tablero ejecutivo de recolección por periodo, material y centro de acopio.
           </p>
         </div>
-        <button
-          onClick={exportarCSV}
-          disabled={!datos || datos.centros.length === 0}
-          className="rounded-xl border border-[var(--brand-blue)] px-3 py-2 text-sm font-medium text-[var(--brand-blue)] hover:bg-white/40 disabled:opacity-50"
-        >
-          Exportar CSV
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={exportarReporteCompleto}
+            disabled={!datos}
+            className="rounded-xl border border-[var(--brand-blue)] bg-[var(--brand-blue)] px-3 py-2 text-sm font-medium text-[var(--accent-foreground)] hover:opacity-90 disabled:opacity-50"
+          >
+            Descargar reporte
+          </button>
+          <button
+            onClick={exportarCSV}
+            disabled={!datos || datos.centros.length === 0}
+            className="rounded-xl border border-[var(--brand-blue)] px-3 py-2 text-sm font-medium text-[var(--brand-blue)] hover:bg-white/40 disabled:opacity-50"
+          >
+            Exportar CSV (centros)
+          </button>
+        </div>
       </div>
 
       <div className="space-y-3 rounded-xl border border-white/50 bg-white/40 backdrop-blur-md p-4">

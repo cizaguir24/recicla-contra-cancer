@@ -1,21 +1,38 @@
 // Exportación CSV sin librerías: arma el texto delimitado por comas, antepone el
 // BOM (para que Excel detecte UTF-8 correctamente) y dispara la descarga vía un
 // <a> sintético.
-export function descargarCSV(
-  nombreArchivo: string,
-  encabezados: string[],
-  filas: (string | number)[][],
-) {
-  const lineas = filas.map((fila) =>
-    fila.map((valor) => `"${String(valor).replace(/"/g, '""')}"`).join(","),
-  );
-  const csv = [encabezados.join(","), ...lineas].join("\n");
-
-  const blob = new Blob([`﻿${csv}`], { type: "text/csv;charset=utf-8;" });
+function descargarBlob(nombreArchivo: string, contenido: string) {
+  const blob = new Blob([`﻿${contenido}`], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
   a.download = nombreArchivo;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+function filaCSV(valores: (string | number)[]): string {
+  return valores.map((valor) => `"${String(valor).replace(/"/g, '""')}"`).join(",");
+}
+
+export function descargarCSV(
+  nombreArchivo: string,
+  encabezados: string[],
+  filas: (string | number)[][],
+) {
+  const csv = [encabezados.join(","), ...filas.map(filaCSV)].join("\n");
+  descargarBlob(nombreArchivo, csv);
+}
+
+// Un solo CSV con varias secciones (título + encabezados + filas), separadas por
+// una línea en blanco — útil para reportes que combinan varias tablas en un
+// único archivo sin necesitar una librería de Excel real (.xlsx).
+export function descargarCSVMultiseccion(
+  nombreArchivo: string,
+  secciones: { titulo: string; encabezados: string[]; filas: (string | number)[][] }[],
+) {
+  const bloques = secciones.map((s) =>
+    [filaCSV([s.titulo]), s.encabezados.join(","), ...s.filas.map(filaCSV)].join("\n"),
+  );
+  descargarBlob(nombreArchivo, bloques.join("\n\n"));
 }

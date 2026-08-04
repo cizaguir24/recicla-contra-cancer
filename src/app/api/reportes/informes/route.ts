@@ -185,6 +185,19 @@ export async function GET(request: NextRequest) {
       ? { anio: mesMayorRecoleccionRaw.anio, mes: mesMayorRecoleccionRaw.mes, kg: mesMayorRecoleccionRaw.kg }
       : null;
 
+  // ---- Manifiestos generados en el periodo: solo a quién van dirigidos ----
+  const manifiestos = await prisma.manifiesto.findMany({
+    where: {
+      estatus: "generado",
+      eliminadoAt: null,
+      fechaManifiesto: { gte: rangoPrincipal.desde, lte: rangoPrincipal.hasta },
+      ...(puntoAcopioId && { puntoAcopioId }),
+    },
+    select: { dirigidoA: true, dirigidoAPuesto: true },
+    orderBy: { fechaManifiesto: "asc" },
+  });
+  const manifiestosDirigidos = manifiestos.map((m) => ({ nombre: m.dirigidoA, puesto: m.dirigidoAPuesto }));
+
   // ---- Advertencias: reportes "realizada" sin ningún material capturado ----
   const incompletos = fechasPeriodoPrincipal
     .filter((f) => MATERIALES.every((m) => !f[m.key]))
@@ -215,6 +228,7 @@ export async function GET(request: NextRequest) {
     graficoMensual: { modo: rangoGrafico.modo, puntos: puntosMensuales },
     materiales: materialesResp,
     centros: centrosMostrados,
+    manifiestosDirigidos,
     advertencias: { sinReporte, incompletos },
   };
 
