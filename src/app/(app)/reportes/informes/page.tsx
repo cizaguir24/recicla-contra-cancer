@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, EyeOff } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { descargarCSV, descargarCSVMultiseccion } from "@/lib/csv";
+import { descargarCSV } from "@/lib/csv";
 import { MATERIALES, MESES_LABEL, type FilaCentroInforme, type InformesResponse, type PeriodoTipo } from "@/lib/informes";
 
 type PuntoAcopioOpcion = {
@@ -65,6 +65,25 @@ function fmtFecha(iso: string | null) {
   return iso ? iso.slice(0, 10) : "—";
 }
 
+function construirParams(filtros: FiltrosInforme): URLSearchParams {
+  const params = new URLSearchParams();
+  params.set("periodo", filtros.periodo);
+  params.set("anio", String(filtros.anio));
+  if (filtros.periodo === "mes") params.set("mes", String(filtros.mes));
+  if (filtros.periodo === "rango") {
+    params.set("desde", filtros.desde);
+    params.set("hasta", filtros.hasta);
+  }
+  if (filtros.puntoAcopioId) params.set("puntoAcopioId", filtros.puntoAcopioId);
+  if (filtros.zona) params.set("zona", filtros.zona);
+  if (filtros.estado) params.set("estado", filtros.estado);
+  if (filtros.tipoContenedor) params.set("tipoContenedor", filtros.tipoContenedor);
+  if (filtros.activo) params.set("activo", filtros.activo);
+  if (filtros.material) params.set("material", filtros.material);
+  if (filtros.conReporte) params.set("conReporte", filtros.conReporte);
+  return params;
+}
+
 function IndicadorCard({ label, valor, detalle }: { label: string; valor: string; detalle?: string }) {
   return (
     <div className="rounded-xl border border-white/50 bg-white/40 backdrop-blur-md p-4">
@@ -94,25 +113,13 @@ export default function InformesPage() {
   const cargar = useCallback(async () => {
     if (filtros.periodo === "rango" && (!filtros.desde || !filtros.hasta)) return;
     setCargando(true);
-    const params = new URLSearchParams();
-    params.set("periodo", filtros.periodo);
-    params.set("anio", String(filtros.anio));
-    if (filtros.periodo === "mes") params.set("mes", String(filtros.mes));
-    if (filtros.periodo === "rango") {
-      params.set("desde", filtros.desde);
-      params.set("hasta", filtros.hasta);
-    }
-    if (filtros.puntoAcopioId) params.set("puntoAcopioId", filtros.puntoAcopioId);
-    if (filtros.zona) params.set("zona", filtros.zona);
-    if (filtros.estado) params.set("estado", filtros.estado);
-    if (filtros.tipoContenedor) params.set("tipoContenedor", filtros.tipoContenedor);
-    if (filtros.activo) params.set("activo", filtros.activo);
-    if (filtros.material) params.set("material", filtros.material);
-    if (filtros.conReporte) params.set("conReporte", filtros.conReporte);
-    const res = await fetch(`/api/reportes/informes?${params}`);
+    const res = await fetch(`/api/reportes/informes?${construirParams(filtros)}`);
     setDatos(await res.json());
     setCargando(false);
   }, [filtros]);
+
+  const rangoIncompleto = filtros.periodo === "rango" && (!filtros.desde || !filtros.hasta);
+  const pdfHref = useMemo(() => `/api/reportes/informes/pdf?${construirParams(filtros)}`, [filtros]);
 
   useEffect(() => {
     cargar();
@@ -199,59 +206,6 @@ export default function InformesPage() {
     );
   }
 
-  function exportarReporteCompleto() {
-    if (!datos) return;
-    const ind = datos.indicadores;
-    descargarCSVMultiseccion(
-      `reporte-informes-${datos.periodo.tipo}-${datos.periodo.anio}-${new Date().toISOString().slice(0, 10)}.csv`,
-      [
-        {
-          titulo: "Resumen del periodo",
-          encabezados: ["Indicador", "Valor"],
-          filas: [
-            ["Total general recolectado", fmtKg(ind.totalKg)],
-            ["Centros que reportaron", ind.totalCentrosReportaron],
-            ["Total de reportes", ind.totalReportes],
-            ["Promedio por centro", fmtKg(ind.promedioPorCentroKg)],
-            [
-              "Material con mayor volumen",
-              ind.materialMayorVolumen
-                ? `${ind.materialMayorVolumen.nombre} (${fmtKg(ind.materialMayorVolumen.kg)})`
-                : "Sin datos",
-            ],
-            [
-              "Centro con mayor desempeño",
-              ind.centroMayorDesempeno
-                ? `${ind.centroMayorDesempeno.nombre} (${fmtKg(ind.centroMayorDesempeno.kg)})`
-                : "Sin datos",
-            ],
-            [
-              "Mes con mayor recolección",
-              ind.mesMayorRecoleccion
-                ? `${MESES_LABEL[ind.mesMayorRecoleccion.mes - 1]} ${ind.mesMayorRecoleccion.anio} (${fmtKg(ind.mesMayorRecoleccion.kg)})`
-                : "Sin datos",
-            ],
-          ],
-        },
-        {
-          titulo: "Recolección mensual",
-          encabezados: ["Mes", "Kg"],
-          filas: datosGrafica.map((p) => [p.etiqueta, p.kg.toFixed(2)]),
-        },
-        {
-          titulo: "Total por tipo de material",
-          encabezados: ["Material", "Kg", "% del total"],
-          filas: datos.materiales.map((m) => [m.nombre, m.kg.toFixed(2), `${m.porcentaje.toFixed(1)}%`]),
-        },
-        {
-          titulo: "Manifiestos generados — dirigido a",
-          encabezados: ["Nombre", "Puesto"],
-          filas: datos.manifiestosDirigidos.map((m) => [m.nombre, m.puesto]),
-        },
-      ],
-    );
-  }
-
   const indicadores = datos?.indicadores ?? null;
 
   return (
@@ -264,13 +218,18 @@ export default function InformesPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button
-            onClick={exportarReporteCompleto}
-            disabled={!datos}
-            className="rounded-xl border border-[var(--brand-blue)] bg-[var(--brand-blue)] px-3 py-2 text-sm font-medium text-[var(--accent-foreground)] hover:opacity-90 disabled:opacity-50"
-          >
-            Descargar reporte
-          </button>
+          {datos && !rangoIncompleto ? (
+            <a
+              href={pdfHref}
+              className="rounded-xl border border-[var(--brand-blue)] bg-[var(--brand-blue)] px-3 py-2 text-sm font-medium text-[var(--accent-foreground)] hover:opacity-90"
+            >
+              Descargar PDF
+            </a>
+          ) : (
+            <span className="cursor-not-allowed rounded-xl border border-[var(--brand-blue)] bg-[var(--brand-blue)] px-3 py-2 text-sm font-medium text-[var(--accent-foreground)] opacity-50">
+              Descargar PDF
+            </span>
+          )}
           <button
             onClick={exportarCSV}
             disabled={!datos || datos.centros.length === 0}
