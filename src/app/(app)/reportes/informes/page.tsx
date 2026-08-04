@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, EyeOff } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { descargarCSV } from "@/lib/csv";
 import { MATERIALES, MESES_LABEL, type FilaCentroInforme, type InformesResponse, type PeriodoTipo } from "@/lib/informes";
@@ -495,7 +495,24 @@ export default function InformesPage() {
           )}
 
           <div>
-            <h2 className="mb-3 text-sm font-semibold">Desempeño por centro de acopio</h2>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold">Desempeño por centro de acopio</h2>
+              <button
+                onClick={() =>
+                  setFiltros((f) => ({ ...f, conReporte: f.conReporte === "con" ? "" : "con" }))
+                }
+                className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-medium ${
+                  filtros.conReporte === "con"
+                    ? "border-[var(--brand-blue)] bg-[var(--brand-blue)] text-[var(--accent-foreground)]"
+                    : "border-white/60 bg-white/40 text-[var(--foreground)] hover:bg-white/60"
+                }`}
+              >
+                <EyeOff className="h-3.5 w-3.5" />
+                {filtros.conReporte === "con"
+                  ? "Mostrando solo con recolección"
+                  : "Ocultar centros sin recolección"}
+              </button>
+            </div>
             <div className="overflow-x-auto rounded-xl border border-white/50 bg-white/40 backdrop-blur-md">
               <table className="w-full text-sm">
                 <thead className="bg-white/50 text-left">
