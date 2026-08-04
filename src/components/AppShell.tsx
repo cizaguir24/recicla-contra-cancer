@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  BarChart3,
   ClipboardList,
   Gauge,
   MapPin,
@@ -21,6 +22,7 @@ import { PermisosProvider } from "@/lib/role-context";
 import type { Permisos } from "@/lib/roles";
 
 const NAV = [
+  { href: "/reportes/informes", label: "Informes", icon: BarChart3 },
   { href: "/reportes/desempeno", label: "Desempeño", icon: Gauge },
   { href: "/reportes/puntos-acopio", label: "Reporte", icon: ClipboardList },
   { href: "/puntos-acopio", label: "Puntos de Acopio", icon: MapPin },

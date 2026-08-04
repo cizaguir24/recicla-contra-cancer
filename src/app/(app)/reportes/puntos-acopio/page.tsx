@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePermisos } from "@/lib/role-context";
 import { ESTADO_BADGE, ESTADO_LABEL } from "@/lib/fechas-acopio";
+import { descargarCSV } from "@/lib/csv";
 
 type PuntoAcopio = { id: string; nombre: string; zona: string | null };
 
@@ -34,19 +35,10 @@ function CeldaKg({ kg }: { kg: number | null }) {
 }
 
 function exportarCSV(filas: FechaAcopio[]) {
-  const encabezados = [
-    "Punto de acopio",
-    "Zona",
-    "Fecha",
-    "Estado",
-    "Kgs Tapas",
-    "Kgs PET",
-    "Kgs Aluminio",
-    "Kgs Tapas Wins",
-    "Notas",
-  ];
-  const lineas = filas.map((f) =>
-    [
+  descargarCSV(
+    `reporte-puntos-acopio-${new Date().toISOString().slice(0, 10)}.csv`,
+    ["Punto de acopio", "Zona", "Fecha", "Estado", "Kgs Tapas", "Kgs PET", "Kgs Aluminio", "Kgs Tapas Wins", "Notas"],
+    filas.map((f) => [
       f.puntoAcopio.nombre,
       f.puntoAcopio.zona ?? "",
       f.fecha.slice(0, 10),
@@ -56,19 +48,8 @@ function exportarCSV(filas: FechaAcopio[]) {
       f.aluminioKg ?? "",
       f.tapasWinsKg ?? "",
       f.notas ?? "",
-    ]
-      .map((valor) => `"${String(valor).replace(/"/g, '""')}"`)
-      .join(","),
+    ]),
   );
-  const csv = [encabezados.join(","), ...lineas].join("\n");
-
-  const blob = new Blob([`﻿${csv}`], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `reporte-puntos-acopio-${new Date().toISOString().slice(0, 10)}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
 }
 
 export default function ReportePuntosAcopioPage() {

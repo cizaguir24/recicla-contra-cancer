@@ -5,6 +5,7 @@ import { MapPin, Phone, Mail, PackageSearch, Pencil, X } from "lucide-react";
 import { usePermisos } from "@/lib/role-context";
 import SearchBar from "@/components/SearchBar";
 import { coincideBusqueda } from "@/lib/texto";
+import { descargarCSV } from "@/lib/csv";
 
 type ColorSemaforo = "pink" | "amber" | "green";
 
@@ -57,22 +58,23 @@ function Punto({ color }: { color: ColorSemaforo }) {
 }
 
 function exportarCSV(filas: FilaDesempeno[]) {
-  const encabezados = [
-    "Punto de acopio",
-    "Municipio",
-    "Tipo de contenedor",
-    "Total recolecciones",
-    "Última recolección",
-    "Kgs Tapas total",
-    "Frecuencia",
-    "Recolecciones últimos 6 meses",
-    "Semáforo",
-    "Decisión de Reubicación (Notion)",
-    "Número Celular",
-    "Correo electrónico",
-  ];
-  const lineas = filas.map((f) =>
+  descargarCSV(
+    `desempeno-puntos-acopio-${new Date().toISOString().slice(0, 10)}.csv`,
     [
+      "Punto de acopio",
+      "Municipio",
+      "Tipo de contenedor",
+      "Total recolecciones",
+      "Última recolección",
+      "Kgs Tapas total",
+      "Frecuencia",
+      "Recolecciones últimos 6 meses",
+      "Semáforo",
+      "Decisión de Reubicación (Notion)",
+      "Número Celular",
+      "Correo electrónico",
+    ],
+    filas.map((f) => [
       f.nombre,
       f.municipio ?? "",
       f.tipoContenedor ?? "",
@@ -85,19 +87,8 @@ function exportarCSV(filas: FilaDesempeno[]) {
       f.decisionReubicacion ?? "",
       f.numeroCelular ?? "",
       f.correoElectronico ?? "",
-    ]
-      .map((valor) => `"${String(valor).replace(/"/g, '""')}"`)
-      .join(","),
+    ]),
   );
-  const csv = [encabezados.join(","), ...lineas].join("\n");
-
-  const blob = new Blob([`﻿${csv}`], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `desempeno-puntos-acopio-${new Date().toISOString().slice(0, 10)}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
 }
 
 const FORM_EDICION_VACIO = {
