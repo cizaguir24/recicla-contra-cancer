@@ -8,6 +8,7 @@ import {
   esFirmaPngValida,
   esLogotipoValido,
 } from "@/lib/manifiestos";
+import { limpiarDireccionDuplicada } from "@/lib/direccion";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -79,7 +80,7 @@ export async function POST(_request: NextRequest, { params }: Context) {
   const total = totalKgDeFilas(filas);
 
   const direccionCompleta = [
-    manifiesto.puntoAcopio.direccion,
+    manifiesto.puntoAcopio.direccion ? limpiarDireccionDuplicada(manifiesto.puntoAcopio.direccion) : null,
     manifiesto.puntoAcopio.zona,
     manifiesto.puntoAcopio.estado,
   ]

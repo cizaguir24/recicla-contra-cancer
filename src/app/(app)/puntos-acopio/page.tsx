@@ -7,6 +7,7 @@ import { MapPin, Phone, Pencil, Trash2, PackageSearch, FileText, X, Map as MapIc
 import { usePermisos } from "@/lib/role-context";
 import SearchBar from "@/components/SearchBar";
 import { coincideBusqueda } from "@/lib/texto";
+import { limpiarDireccionDuplicada } from "@/lib/direccion";
 
 const PuntosAcopioMap = dynamic(() => import("@/components/PuntosAcopioMap"), {
   ssr: false,
@@ -204,7 +205,7 @@ export default function PuntosAcopioPage() {
               <p className="mb-3 flex items-start gap-1 text-xs text-[var(--muted)]">
                 <MapPin className="mt-0.5 h-3 w-3 shrink-0" />
                 <span>
-                  {p.direccion || "Sin dirección"}
+                  {p.direccion ? limpiarDireccionDuplicada(p.direccion) : "Sin dirección"}
                   {p.zona ? `, ${p.zona}` : ""}
                   {p.estado ? `, ${p.estado}` : ""}
                 </span>
