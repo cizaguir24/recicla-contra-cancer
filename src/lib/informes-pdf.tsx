@@ -142,7 +142,7 @@ export type InformesDocumentProps = {
 export function InformesDocument({ logotipoDataUrl, datos }: InformesDocumentProps) {
   const logotipo = esLogotipoValido(logotipoDataUrl) ? logotipoDataUrl : null;
   const ind = datos.indicadores;
-  const top10 = datos.centros.filter((c) => c.totalKg > 0).slice(0, 10);
+  const centrosConAcopio = datos.centros.filter((c) => c.totalKg > 0);
   const maxMensual = Math.max(1, ...datos.graficoMensual.puntos.map((p) => p.kg));
   const maxMaterial = Math.max(1, ...datos.materiales.map((m) => m.kg));
 
@@ -247,8 +247,10 @@ export function InformesDocument({ logotipoDataUrl, datos }: InformesDocumentPro
           ))
         )}
 
-        <Text style={styles.sectionTitle}>Los 10 centros que más aportaron</Text>
-        {top10.length === 0 ? (
+        <Text style={styles.sectionTitle}>
+          Centros de acopio con recolección ({centrosConAcopio.length})
+        </Text>
+        {centrosConAcopio.length === 0 ? (
           <Text style={styles.emptyNote}>No hay centros con recolección en este periodo.</Text>
         ) : (
           <View style={styles.table}>
@@ -258,9 +260,9 @@ export function InformesDocument({ logotipoDataUrl, datos }: InformesDocumentPro
               <Text style={[styles.colMunicipio, styles.tableHeaderText]}>Municipio</Text>
               <Text style={[styles.colKg, styles.tableHeaderText]}>Kilogramos</Text>
             </View>
-            {top10.map((c, i) => (
+            {centrosConAcopio.map((c) => (
               <View key={c.id} style={styles.tableRow} wrap={false}>
-                <Text style={styles.colRank}>{i + 1}</Text>
+                <Text style={styles.colRank}>{c.ranking}</Text>
                 <Text style={styles.colNombre}>{c.nombre}</Text>
                 <Text style={styles.colMunicipio}>{c.municipio ?? "—"}</Text>
                 <Text style={styles.colKg}>{fmtKg(c.totalKg)}</Text>
