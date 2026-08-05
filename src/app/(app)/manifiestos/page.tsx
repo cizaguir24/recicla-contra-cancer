@@ -3,7 +3,19 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Search, FileText, Eye, Download, Pencil, Copy, XCircle, PackageSearch, Trash2 } from "lucide-react";
+import {
+  Search,
+  FileText,
+  Eye,
+  Download,
+  Pencil,
+  Copy,
+  XCircle,
+  PackageSearch,
+  Trash2,
+  CheckCircle2,
+  Circle,
+} from "lucide-react";
 import { usePermisos } from "@/lib/role-context";
 import { ESTATUS_LABEL, ESTATUS_BADGE } from "@/lib/manifiestos";
 
@@ -22,6 +34,7 @@ type ManifiestoItem = {
   totalKg: number | null;
   estatus: "borrador" | "generado" | "cancelado";
   generadoAt: string | null;
+  enviado: boolean;
   createdAt: string;
   puntoAcopio: PuntoAcopioMini;
 };
@@ -41,6 +54,7 @@ export default function ManifiestosPage() {
   const [q, setQ] = useState("");
   const [filtroPunto, setFiltroPunto] = useState(puntoAcopioIdInicial);
   const [filtroEstatus, setFiltroEstatus] = useState("");
+  const [filtroEnviado, setFiltroEnviado] = useState("");
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -62,13 +76,28 @@ export default function ManifiestosPage() {
     return items.filter((m) => {
       if (filtroPunto && m.puntoAcopioId !== filtroPunto) return false;
       if (filtroEstatus && m.estatus !== filtroEstatus) return false;
+      if (filtroEnviado === "enviado" && !m.enviado) return false;
+      if (filtroEnviado === "sin-enviar" && m.enviado) return false;
       if (qNorm) {
         const texto = `${m.puntoAcopio.nombre} ${m.dirigidoA} ${m.nombreFirmante}`.toLowerCase();
         if (!texto.includes(qNorm)) return false;
       }
       return true;
     });
-  }, [items, q, filtroPunto, filtroEstatus]);
+  }, [items, q, filtroPunto, filtroEstatus, filtroEnviado]);
+
+  async function alternarEnviado(m: ManifiestoItem) {
+    const nuevo = !m.enviado;
+    setItems((prev) => prev.map((it) => (it.id === m.id ? { ...it, enviado: nuevo } : it)));
+    const res = await fetch(`/api/manifiestos/${m.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enviado: nuevo }),
+    });
+    if (!res.ok) {
+      setItems((prev) => prev.map((it) => (it.id === m.id ? { ...it, enviado: !nuevo } : it)));
+    }
+  }
 
   async function cancelarOEliminar(m: ManifiestoItem) {
     const mensaje =
@@ -112,7 +141,7 @@ export default function ManifiestosPage() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-3 rounded-xl border border-white/50 bg-white/40 backdrop-blur-md p-4 sm:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 rounded-xl border border-white/50 bg-white/40 backdrop-blur-md p-4 sm:grid-cols-5">
         <label className="space-y-1 text-sm sm:col-span-2">
           <span className="font-medium">Buscar</span>
           <div className="relative">
@@ -149,6 +178,18 @@ export default function ManifiestosPage() {
             <option value="cancelado">Cancelado</option>
           </select>
         </label>
+        <label className="space-y-1 text-sm">
+          <span className="font-medium">Envío</span>
+          <select
+            value={filtroEnviado}
+            onChange={(e) => setFiltroEnviado(e.target.value)}
+            className="input"
+          >
+            <option value="">Todos</option>
+            <option value="enviado">Enviado</option>
+            <option value="sin-enviar">Sin enviar</option>
+          </select>
+        </label>
       </div>
 
       {cargando ? (
@@ -162,11 +203,45 @@ export default function ManifiestosPage() {
             >
               <div className="mb-1 flex items-start justify-between gap-2">
                 <h2 className="font-semibold text-[var(--foreground)]">{m.puntoAcopio.nombre}</h2>
-                <span
-                  className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${ESTATUS_BADGE[m.estatus]}`}
-                >
-                  {ESTATUS_LABEL[m.estatus]}
-                </span>
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${ESTATUS_BADGE[m.estatus]}`}
+                  >
+                    {ESTATUS_LABEL[m.estatus]}
+                  </span>
+                  {m.estatus === "generado" &&
+                    (esAdmin ? (
+                      <button
+                        onClick={() => alternarEnviado(m)}
+                        title={m.enviado ? "Marcar como sin enviar" : "Marcar como enviado"}
+                        className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                          m.enviado
+                            ? "bg-green-100 text-green-700 hover:bg-green-200"
+                            : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                        }`}
+                      >
+                        {m.enviado ? (
+                          <CheckCircle2 className="h-3 w-3" />
+                        ) : (
+                          <Circle className="h-3 w-3" />
+                        )}
+                        {m.enviado ? "Enviado" : "Sin enviar"}
+                      </button>
+                    ) : (
+                      <span
+                        className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                          m.enviado ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
+                        }`}
+                      >
+                        {m.enviado ? (
+                          <CheckCircle2 className="h-3 w-3" />
+                        ) : (
+                          <Circle className="h-3 w-3" />
+                        )}
+                        {m.enviado ? "Enviado" : "Sin enviar"}
+                      </span>
+                    ))}
+                </div>
               </div>
               {m.dirigidoA && (
                 <p className="mb-3 text-xs text-[var(--muted)]">

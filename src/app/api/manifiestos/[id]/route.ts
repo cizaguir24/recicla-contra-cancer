@@ -19,6 +19,8 @@ const SELECT_DETALLE = {
   totalKg: true,
   estatus: true,
   generadoAt: true,
+  enviado: true,
+  enviadoAt: true,
   eliminadoAt: true,
   createdAt: true,
   updatedAt: true,
@@ -47,6 +49,25 @@ export async function PATCH(request: NextRequest, { params }: Context) {
   if (!actual || actual.eliminadoAt) {
     return NextResponse.json({ error: "No encontrado" }, { status: 404 });
   }
+
+  // Alternar "enviado" es una excepción a la inmutabilidad de un manifiesto
+  // generado: no cambia el documento, solo si ya se le entregó a "dirigidoA".
+  if (Object.keys(body).length === 1 && "enviado" in body) {
+    if (actual.estatus !== "generado") {
+      return NextResponse.json(
+        { error: "Solo un manifiesto generado se puede marcar como enviado" },
+        { status: 400 },
+      );
+    }
+    const enviado = Boolean(body.enviado);
+    const manifiesto = await prisma.manifiesto.update({
+      where: { id },
+      data: { enviado, enviadoAt: enviado ? new Date() : null },
+      select: SELECT_DETALLE,
+    });
+    return NextResponse.json(manifiesto);
+  }
+
   if (actual.estatus !== "borrador") {
     return NextResponse.json(
       { error: "Un manifiesto generado no se puede modificar. Duplícalo para hacer ajustes." },

@@ -14,6 +14,7 @@ const SELECT_LISTA = {
   totalKg: true,
   estatus: true,
   generadoAt: true,
+  enviado: true,
   createdAt: true,
   puntoAcopio: { select: { id: true, nombre: true, zona: true } },
 } as const;
@@ -22,6 +23,8 @@ export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const puntoAcopioId = searchParams.get("puntoAcopioId");
   const estatus = searchParams.get("estatus");
+  const enviadoParam = searchParams.get("enviado");
+  const enviado = enviadoParam === "1" ? true : enviadoParam === "0" ? false : undefined;
   const q = searchParams.get("q")?.trim();
   const desde = searchParams.get("desde");
   const hasta = searchParams.get("hasta");
@@ -31,6 +34,7 @@ export async function GET(request: NextRequest) {
       eliminadoAt: null,
       ...(puntoAcopioId && { puntoAcopioId }),
       ...(estatus && { estatus }),
+      ...(enviado !== undefined && { enviado }),
       ...((desde || hasta) && {
         fechaManifiesto: {
           ...(desde && { gte: new Date(desde) }),

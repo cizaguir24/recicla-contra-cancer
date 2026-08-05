@@ -98,6 +98,8 @@ model Manifiesto {
   totalKg            Float? // total acumulado al momento de generar el PDF
   estatus            String    @default("borrador") // borrador | generado | cancelado
   generadoAt         DateTime?
+  enviado            Boolean   @default(false) // si el documento ya se entregó a "dirigidoA"
+  enviadoAt          DateTime?
   eliminadoAt        DateTime? // borrador movido a la papelera; se purga definitivamente a los 15 días
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
