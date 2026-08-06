@@ -47,18 +47,31 @@ body {
     min-width: 0;
   }
 
-  /* Fondo del cuerpo: degradado simple en móvil (donde el fondo panorámico se
-     ve forzado a agrandarse y `background-attachment: fixed` es poco
-     confiable en Safari de iOS); a partir de "sm" se usa la imagen fija. */
+  /* Fondo del cuerpo: capa aparte con position:fixed (no
+     background-attachment:fixed, poco confiable en Safari de iOS) que cubre
+     el viewport completo — así el tamaño/recorte de la imagen siempre se
+     calcula contra el alto de pantalla, sin importar cuánto contenido haya
+     en la página. Degradado simple como base; en retrato (celular/tablet
+     vertical) se usa la imagen vertical, en horizontal amplio la panorámica. */
   .app-body-bg {
+    position: fixed;
+    inset: 0;
+    z-index: -10;
     background-image: linear-gradient(to bottom right, #dbeafe, #ffffff, #f3e8ff);
   }
-  @media (min-width: 640px) {
+  @media (orientation: portrait) and (min-width: 380px) {
+    .app-body-bg {
+      background-image: url("/fondo-dashboard-vertical.png");
+      background-size: cover;
+      background-position: top center;
+      background-repeat: no-repeat;
+    }
+  }
+  @media (min-width: 900px) and (orientation: landscape) {
     .app-body-bg {
       background-image: url("/fondo-dashboard.png");
       background-size: cover;
       background-position: center;
-      background-attachment: fixed;
       background-repeat: no-repeat;
     }
   }

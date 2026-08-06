@@ -78,7 +78,8 @@ export default function AppShell({
           className="object-cover object-center"
         />
       </div>
-      <div className="app-body-bg flex flex-1">
+      <div className="flex flex-1">
+      <div className="app-body-bg" aria-hidden="true" />
       <button
         onClick={() => setOpen(true)}
         className="lg:hidden fixed bottom-4 right-4 z-30 flex items-center gap-2 rounded-full bg-[var(--brand-blue)] text-white px-4 py-3 shadow-lg"
