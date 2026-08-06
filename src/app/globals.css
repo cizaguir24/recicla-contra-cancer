@@ -46,4 +46,20 @@ body {
     @apply w-full rounded-lg border border-border bg-white/70 px-3 py-2 text-sm outline-none focus:border-accent;
     min-width: 0;
   }
+
+  /* Fondo del cuerpo: degradado simple en móvil (donde el fondo panorámico se
+     ve forzado a agrandarse y `background-attachment: fixed` es poco
+     confiable en Safari de iOS); a partir de "sm" se usa la imagen fija. */
+  .app-body-bg {
+    background-image: linear-gradient(to bottom right, #dbeafe, #ffffff, #f3e8ff);
+  }
+  @media (min-width: 640px) {
+    .app-body-bg {
+      background-image: url("/fondo-dashboard.png");
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      background-repeat: no-repeat;
+    }
+  }
 }
