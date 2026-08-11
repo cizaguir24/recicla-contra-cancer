@@ -7,10 +7,10 @@ import {
   agruparPorMes,
   kgDeFila,
   sumarMateriales,
-  mesesEnRango,
+  mesesEnRangos,
   porcentaje,
-  resolverRangoPeriodo,
-  resolverRangoGrafico,
+  resolverRangosPeriodo,
+  resolverRangosGrafico,
   type MaterialKey,
   type PeriodoTipo,
   type PuntoMensual,
@@ -22,7 +22,18 @@ export async function obtenerInformes(searchParams: URLSearchParams): Promise<In
   const hoy = new Date();
 
   const periodo = (searchParams.get("periodo") as PeriodoTipo) || "anio";
-  const anio = Number(searchParams.get("anio")) || hoy.getFullYear();
+  const aniosParam = searchParams.get("anios");
+  const anios = aniosParam
+    ? Array.from(
+        new Set(
+          aniosParam
+            .split(",")
+            .map(Number)
+            .filter((n) => Number.isInteger(n) && n > 0),
+        ),
+      ).sort((a, b) => a - b)
+    : [];
+  if (anios.length === 0) anios.push(hoy.getFullYear());
   const mesParam = searchParams.get("mes");
   const mes = mesParam ? Number(mesParam) : undefined;
   const desdeParam = searchParams.get("desde") || undefined;
@@ -39,8 +50,8 @@ export async function obtenerInformes(searchParams: URLSearchParams): Promise<In
     materialParam && MATERIALES.some((m) => m.key === materialParam) ? materialParam : null;
   const conReporte = searchParams.get("conReporte") as "con" | "sin" | null;
 
-  const rangoPrincipal = resolverRangoPeriodo({ periodo, anio, mes, desde: desdeParam, hasta: hastaParam });
-  const rangoGrafico = resolverRangoGrafico(rangoPrincipal, periodo, anio);
+  const rangosPrincipales = resolverRangosPeriodo({ periodo, anios, mes, desde: desdeParam, hasta: hastaParam });
+  const { rangos: rangosGrafico, modo: modoGrafico } = resolverRangosGrafico(rangosPrincipales, periodo, anios);
 
   // 1. Centros candidatos según los filtros no temporales.
   const centros = await prisma.puntoAcopio.findMany({
@@ -56,13 +67,14 @@ export async function obtenerInformes(searchParams: URLSearchParams): Promise<In
   });
   const centroPorId = new Map(centros.map((c) => [c.id, c]));
 
-  // 2. Un solo fetch de fechas "realizada" para el rango más amplio (el de la
-  //    gráfica, que siempre contiene o iguala al del periodo principal).
+  // 2. Un solo fetch de fechas "realizada" para el conjunto de rangos más amplio
+  //    (el de la gráfica, que siempre contiene o iguala al del periodo principal;
+  //    varios rangos disjuntos cuando hay más de un año marcado).
   const fechas = await prisma.fechaAcopio.findMany({
     where: {
       estado: "realizada",
       puntoAcopioId: { in: centros.map((c) => c.id) },
-      fecha: { gte: rangoGrafico.desde, lte: rangoGrafico.hasta },
+      OR: rangosGrafico.map((r) => ({ fecha: { gte: r.desde, lte: r.hasta } })),
     },
     select: {
       id: true,
@@ -76,15 +88,14 @@ export async function obtenerInformes(searchParams: URLSearchParams): Promise<In
     orderBy: { fecha: "asc" },
   });
 
-  const fechasPeriodoPrincipal = fechas.filter(
-    (f) => f.fecha >= rangoPrincipal.desde && f.fecha <= rangoPrincipal.hasta,
+  const fechasPeriodoPrincipal = fechas.filter((f) =>
+    rangosPrincipales.some((r) => f.fecha >= r.desde && f.fecha <= r.hasta),
   );
 
   // ---- Gráfica mensual ----
   const puntosMensuales: PuntoMensual[] = agruparPorMes(
     fechas.map((f) => ({ fecha: f.fecha, kg: kgDeFila(f, materialFiltro) })),
-    rangoGrafico.desde,
-    rangoGrafico.hasta,
+    rangosGrafico,
   );
 
   // ---- Agregación por centro (periodo principal) ----
@@ -96,7 +107,7 @@ export async function obtenerInformes(searchParams: URLSearchParams): Promise<In
   }
 
   const totalGeneralKg = fechasPeriodoPrincipal.reduce((suma, f) => suma + kgDeFila(f, materialFiltro), 0);
-  const mesesDelPeriodo = mesesEnRango(rangoPrincipal.desde, rangoPrincipal.hasta);
+  const mesesDelPeriodo = mesesEnRangos(rangosPrincipales);
 
   const filasCentro: FilaCentroInforme[] = centros.map((c) => {
     const fechasCentro = fechasPorCentro.get(c.id) ?? [];
@@ -174,8 +185,7 @@ export async function obtenerInformes(searchParams: URLSearchParams): Promise<In
   // sobre el año completo que siempre trae la gráfica).
   const puntosMensualesPeriodoPrincipal = agruparPorMes(
     fechasPeriodoPrincipal.map((f) => ({ fecha: f.fecha, kg: kgDeFila(f, materialFiltro) })),
-    rangoPrincipal.desde,
-    rangoPrincipal.hasta,
+    rangosPrincipales,
   );
   const mesMayorRecoleccionRaw = puntosMensualesPeriodoPrincipal.reduce<PuntoMensual | null>(
     (max, p) => (max === null || p.kg > max.kg ? p : max),
@@ -191,7 +201,7 @@ export async function obtenerInformes(searchParams: URLSearchParams): Promise<In
     where: {
       estatus: "generado",
       eliminadoAt: null,
-      fechaManifiesto: { gte: rangoPrincipal.desde, lte: rangoPrincipal.hasta },
+      OR: rangosPrincipales.map((r) => ({ fechaManifiesto: { gte: r.desde, lte: r.hasta } })),
       ...(puntoAcopioId && { puntoAcopioId }),
     },
     select: { dirigidoA: true, dirigidoAPuesto: true },
@@ -209,13 +219,22 @@ export async function obtenerInformes(searchParams: URLSearchParams): Promise<In
       fecha: f.fecha.toISOString(),
     }));
 
+  const desdeGlobal = rangosPrincipales.reduce(
+    (min, r) => (r.desde < min ? r.desde : min),
+    rangosPrincipales[0].desde,
+  );
+  const hastaGlobal = rangosPrincipales.reduce(
+    (max, r) => (r.hasta > max ? r.hasta : max),
+    rangosPrincipales[0].hasta,
+  );
+
   return {
     periodo: {
       tipo: periodo,
-      anio,
+      anios,
       mes: mes ?? null,
-      desde: rangoPrincipal.desde.toISOString(),
-      hasta: rangoPrincipal.hasta.toISOString(),
+      desde: desdeGlobal.toISOString(),
+      hasta: hastaGlobal.toISOString(),
     },
     indicadores: {
       totalKg: totalKgMostrado,
@@ -226,7 +245,7 @@ export async function obtenerInformes(searchParams: URLSearchParams): Promise<In
       centroMayorDesempeno,
       mesMayorRecoleccion,
     },
-    graficoMensual: { modo: rangoGrafico.modo, puntos: puntosMensuales },
+    graficoMensual: { modo: modoGrafico, puntos: puntosMensuales },
     materiales: materialesResp,
     centros: centrosMostrados,
     manifiestosDirigidos,

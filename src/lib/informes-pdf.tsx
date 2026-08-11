@@ -1,6 +1,6 @@
 import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
 import { esLogotipoValido } from "./manifiestos";
-import { MESES_LABEL, type InformesResponse, type MaterialKey } from "./informes";
+import { MESES_LABEL, formatAnios, type InformesResponse, type MaterialKey } from "./informes";
 
 const LOGOTIPO_ANCHO_PT = 170;
 const LOGOTIPO_ALTO_PT = 56;
@@ -154,7 +154,10 @@ export function InformesDocument({ logotipoDataUrl, datos }: InformesDocumentPro
             <Text style={styles.headerTitle}>Recicla Contra el Cáncer</Text>
             <Text style={styles.headerSubtitle}>Informe ejecutivo de recolección · Un proyecto original de Cómplices AC</Text>
             <Text style={styles.headerPeriodo}>
-              Periodo: {fmtFecha(datos.periodo.desde)} – {fmtFecha(datos.periodo.hasta)}
+              Periodo:{" "}
+              {datos.graficoMensual.modo === "rango"
+                ? `${fmtFecha(datos.periodo.desde)} – ${fmtFecha(datos.periodo.hasta)}`
+                : `Año${datos.periodo.anios.length > 1 ? "s" : ""} ${formatAnios(datos.periodo.anios)}`}
             </Text>
           </View>
           {logotipo && <Image src={logotipo} style={styles.headerLogo} />}
@@ -221,6 +224,7 @@ export function InformesDocument({ logotipoDataUrl, datos }: InformesDocumentPro
           {datos.graficoMensual.puntos.map((p) => (
             <Text key={p.clave} style={styles.chartLabel}>
               {MESES_LABEL[p.mes - 1].slice(0, 3)}
+              {datos.graficoMensual.modo !== "anioFijo" ? ` ${String(p.anio).slice(2)}` : ""}
             </Text>
           ))}
         </View>

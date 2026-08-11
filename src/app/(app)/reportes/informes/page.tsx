@@ -4,7 +4,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, EyeOff } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { descargarCSV } from "@/lib/csv";
-import { MATERIALES, MESES_LABEL, type FilaCentroInforme, type InformesResponse, type PeriodoTipo } from "@/lib/informes";
+import {
+  MATERIALES,
+  MESES_LABEL,
+  formatAnios,
+  type FilaCentroInforme,
+  type InformesResponse,
+  type PeriodoTipo,
+} from "@/lib/informes";
 
 type PuntoAcopioOpcion = {
   id: string;
@@ -16,7 +23,7 @@ type PuntoAcopioOpcion = {
 
 type FiltrosInforme = {
   periodo: PeriodoTipo;
-  anio: number;
+  anios: number[];
   mes: number;
   desde: string;
   hasta: string;
@@ -33,7 +40,7 @@ const anioActual = new Date().getFullYear();
 
 const FILTROS_INICIALES: FiltrosInforme = {
   periodo: "anio",
-  anio: anioActual,
+  anios: [anioActual],
   mes: new Date().getMonth() + 1,
   desde: "",
   hasta: "",
@@ -68,7 +75,7 @@ function fmtFecha(iso: string | null) {
 function construirParams(filtros: FiltrosInforme): URLSearchParams {
   const params = new URLSearchParams();
   params.set("periodo", filtros.periodo);
-  params.set("anio", String(filtros.anio));
+  params.set("anios", filtros.anios.join(","));
   if (filtros.periodo === "mes") params.set("mes", String(filtros.mes));
   if (filtros.periodo === "rango") {
     params.set("desde", filtros.desde);
@@ -143,6 +150,17 @@ export default function InformesPage() {
     setOrden((o) => (o.campo === campo ? { campo, dir: o.dir === "asc" ? "desc" : "asc" } : { campo, dir: "asc" }));
   }
 
+  // Siempre debe quedar al menos un año marcado: 2026 es el predeterminado, y los
+  // demás son opcionales para sumarlos a la consulta.
+  function toggleAnio(anio: number) {
+    setFiltros((f) => {
+      const yaMarcado = f.anios.includes(anio);
+      if (yaMarcado && f.anios.length === 1) return f;
+      const anios = yaMarcado ? f.anios.filter((a) => a !== anio) : [...f.anios, anio].sort((a, b) => a - b);
+      return { ...f, anios };
+    });
+  }
+
   const centrosOrdenados = useMemo(() => {
     if (!datos) return [];
     const copia = [...datos.centros];
@@ -172,7 +190,7 @@ export default function InformesPage() {
   function exportarCSV() {
     if (!datos) return;
     descargarCSV(
-      `informe-${datos.periodo.tipo}-${datos.periodo.anio}-${new Date().toISOString().slice(0, 10)}.csv`,
+      `informe-${datos.periodo.tipo}-${datos.periodo.anios.join("-")}-${new Date().toISOString().slice(0, 10)}.csv`,
       [
         "#",
         "Centro",
@@ -256,20 +274,32 @@ export default function InformesPage() {
               <option value="rango">Rango personalizado</option>
             </select>
           </label>
-          <label className="space-y-1 text-sm">
+          <div className="space-y-1 text-sm sm:col-span-2">
             <span className="font-medium">Año</span>
-            <select
-              value={filtros.anio}
-              onChange={(e) => setFiltros({ ...filtros, anio: Number(e.target.value) })}
-              className="input"
-            >
-              {aniosDisponibles.map((a) => (
-                <option key={a} value={a}>
-                  {a}
-                </option>
-              ))}
-            </select>
-          </label>
+            <div className="flex flex-wrap gap-2">
+              {aniosDisponibles.map((a) => {
+                const marcado = filtros.anios.includes(a);
+                return (
+                  <label
+                    key={a}
+                    className={`flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                      marcado
+                        ? "border-[var(--brand-blue)] bg-[var(--brand-blue)] text-[var(--accent-foreground)]"
+                        : "border-white/60 bg-white/40 text-[var(--foreground)] hover:bg-white/60"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={marcado}
+                      onChange={() => toggleAnio(a)}
+                      className="sr-only"
+                    />
+                    {a}
+                  </label>
+                );
+              })}
+            </div>
+          </div>
           {filtros.periodo === "mes" && (
             <label className="space-y-1 text-sm">
               <span className="font-medium">Mes</span>
@@ -454,7 +484,8 @@ export default function InformesPage() {
 
           <div className="rounded-xl border border-white/50 bg-white/40 backdrop-blur-md p-4">
             <h2 className="mb-3 text-sm font-semibold">
-              Recolección mensual {datos.graficoMensual.modo === "anioFijo" ? `(${filtros.anio})` : ""}
+              Recolección mensual{" "}
+              {datos.graficoMensual.modo !== "rango" ? `(${formatAnios(filtros.anios)})` : ""}
             </h2>
             {datosGrafica.length === 0 ? (
               <p className="text-sm text-[var(--muted)]">No hay datos para mostrar en la gráfica.</p>
