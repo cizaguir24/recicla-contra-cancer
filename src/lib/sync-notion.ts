@@ -23,6 +23,18 @@ function esPlaceholder(v: string) {
   return !v || v.trim().toUpperCase() === "N/A";
 }
 
+// Una fecha "tiene captura" cuando al menos un material llegó con kg > 0.
+function tieneKgCapturados(datos: {
+  petKg: number | null;
+  tapasKg: number | null;
+  aluminioKg: number | null;
+  tapasWinsKg: number | null;
+}) {
+  return [datos.petKg, datos.tapasKg, datos.aluminioKg, datos.tapasWinsKg].some(
+    (kg) => (kg ?? 0) > 0,
+  );
+}
+
 function datosPuntoDesdeNotion(ubicacionPage: NotionPage) {
   const nombre =
     getTitleText(ubicacionPage, "Empresa, institución, otro") || "Sin nombre (Notion)";
@@ -164,17 +176,26 @@ export async function sincronizarNotion() {
       where: { notionPageId: page.id },
     });
 
+    // Una fecha "programada" pasa a "realizada" sola en cuanto Notion trae
+    // kg capturados; nunca se toca "cancelada" ni se retrocede una que ya
+    // estaba "realizada" aunque los kg bajen a 0 en un sync posterior.
+    const yaConCaptura = tieneKgCapturados(datosNotion);
+
     if (existente) {
+      const debeMarcarRealizada = existente.estado === "programada" && yaConCaptura;
       await prisma.fechaAcopio.update({
         where: { id: existente.id },
-        data: datosNotion,
+        data: {
+          ...datosNotion,
+          ...(debeMarcarRealizada && { estado: "realizada" }),
+        },
       });
       actualizados++;
     } else {
       await prisma.fechaAcopio.create({
         data: {
           ...datosNotion,
-          estado: "realizada",
+          estado: yaConCaptura ? "realizada" : "programada",
           puntoAcopioId,
           notionPageId: page.id,
         },
