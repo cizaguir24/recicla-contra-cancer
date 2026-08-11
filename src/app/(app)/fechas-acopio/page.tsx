@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { usePermisos } from "@/lib/role-context";
 import { ESTADO_BADGE, ESTADO_LABEL } from "@/lib/fechas-acopio";
-import { descargarCSV } from "@/lib/csv";
 
 type PuntoAcopio = { id: string; nombre: string };
 
@@ -24,14 +23,6 @@ const FORM_INICIAL = {
 };
 
 const ESTADOS = ["programada", "realizada", "cancelada"];
-
-function exportarCSV(filas: FechaAcopio[]) {
-  descargarCSV(
-    `fechas-acopio-reporte-${new Date().toISOString().slice(0, 10)}.csv`,
-    ["Punto de acopio", "Fecha", "Estado", "Notas"],
-    filas.map((f) => [f.puntoAcopio.nombre, f.fecha.slice(0, 10), ESTADO_LABEL[f.estado] ?? f.estado, f.notas ?? ""]),
-  );
-}
 
 export default function FechasAcopioPage() {
   const { fechasAcopio: esAdmin } = usePermisos();
@@ -117,18 +108,31 @@ export default function FechasAcopioPage() {
 
   const hayFiltrosActivos = Boolean(filtroEstado || filtroDesde || filtroHasta);
 
+  const pdfHref = useMemo(() => {
+    const params = new URLSearchParams();
+    if (filtroEstado) params.set("estado", filtroEstado);
+    if (filtroDesde) params.set("desde", filtroDesde);
+    if (filtroHasta) params.set("hasta", filtroHasta);
+    return `/api/fechas-acopio/pdf?${params}`;
+  }, [filtroEstado, filtroDesde, filtroHasta]);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-semibold">Fechas de Acopio</h1>
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => exportarCSV(filtradas)}
-            disabled={filtradas.length === 0}
-            className="rounded-xl border border-[var(--brand-blue)] px-3 py-2 text-sm font-medium text-[var(--brand-blue)] hover:bg-white/40 disabled:opacity-50"
-          >
-            Exportar CSV
-          </button>
+          {filtradas.length > 0 ? (
+            <a
+              href={pdfHref}
+              className="rounded-xl border border-[var(--brand-blue)] px-3 py-2 text-sm font-medium text-[var(--brand-blue)] hover:bg-white/40"
+            >
+              Descargar PDF
+            </a>
+          ) : (
+            <span className="cursor-not-allowed rounded-xl border border-[var(--brand-blue)] px-3 py-2 text-sm font-medium text-[var(--brand-blue)] opacity-50">
+              Descargar PDF
+            </span>
+          )}
           {esAdmin && (
             <button
               onClick={abrirNuevo}
