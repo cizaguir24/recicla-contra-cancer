@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePermisos } from "@/lib/role-context";
 import { ESTADO_BADGE, ESTADO_LABEL } from "@/lib/fechas-acopio";
+import { descargarCSV } from "@/lib/csv";
 
 type PuntoAcopio = { id: string; nombre: string };
 
@@ -24,6 +25,14 @@ const FORM_INICIAL = {
 
 const ESTADOS = ["programada", "realizada", "cancelada"];
 
+function exportarCSV(filas: FechaAcopio[]) {
+  descargarCSV(
+    `fechas-acopio-reporte-${new Date().toISOString().slice(0, 10)}.csv`,
+    ["Punto de acopio", "Fecha", "Estado", "Notas"],
+    filas.map((f) => [f.puntoAcopio.nombre, f.fecha.slice(0, 10), ESTADO_LABEL[f.estado] ?? f.estado, f.notas ?? ""]),
+  );
+}
+
 export default function FechasAcopioPage() {
   const { fechasAcopio: esAdmin } = usePermisos();
   const [fechas, setFechas] = useState<FechaAcopio[]>([]);
@@ -32,6 +41,10 @@ export default function FechasAcopioPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [mostrarForm, setMostrarForm] = useState(false);
   const [form, setForm] = useState(FORM_INICIAL);
+
+  const [filtroEstado, setFiltroEstado] = useState("");
+  const [filtroDesde, setFiltroDesde] = useState("");
+  const [filtroHasta, setFiltroHasta] = useState("");
 
   async function cargarDatos() {
     setCargando(true);
@@ -84,25 +97,107 @@ export default function FechasAcopioPage() {
     await cargarDatos();
   }
 
+  const filtradas = useMemo(() => {
+    return fechas.filter((f) => {
+      const fechaStr = f.fecha.slice(0, 10);
+      if (filtroEstado && f.estado !== filtroEstado) return false;
+      if (filtroDesde && fechaStr < filtroDesde) return false;
+      if (filtroHasta && fechaStr > filtroHasta) return false;
+      return true;
+    });
+  }, [fechas, filtroEstado, filtroDesde, filtroHasta]);
+
+  const resumen = useMemo(() => {
+    const porEstado: Record<string, number> = {};
+    for (const f of filtradas) {
+      porEstado[f.estado] = (porEstado[f.estado] ?? 0) + 1;
+    }
+    return { total: filtradas.length, porEstado };
+  }, [filtradas]);
+
+  const hayFiltrosActivos = Boolean(filtroEstado || filtroDesde || filtroHasta);
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-semibold">Fechas de Acopio</h1>
-        {esAdmin && (
+        <div className="flex items-center gap-3">
           <button
-            onClick={abrirNuevo}
-            disabled={puntos.length === 0}
-            className="rounded-xl bg-[var(--brand-blue)] px-3 py-2 text-sm font-medium text-[var(--accent-foreground)] shadow-sm disabled:opacity-50"
+            onClick={() => exportarCSV(filtradas)}
+            disabled={filtradas.length === 0}
+            className="rounded-xl border border-[var(--brand-blue)] px-3 py-2 text-sm font-medium text-[var(--brand-blue)] hover:bg-white/40 disabled:opacity-50"
           >
-            + Nueva fecha
+            Exportar CSV
           </button>
-        )}
+          {esAdmin && (
+            <button
+              onClick={abrirNuevo}
+              disabled={puntos.length === 0}
+              className="rounded-xl bg-[var(--brand-blue)] px-3 py-2 text-sm font-medium text-[var(--accent-foreground)] shadow-sm disabled:opacity-50"
+            >
+              + Nueva fecha
+            </button>
+          )}
+        </div>
       </div>
 
       {puntos.length === 0 && !cargando && (
         <p className="text-sm text-foreground/60">
           Primero registra un punto de acopio para poder agendar fechas.
         </p>
+      )}
+
+      <div className="grid grid-cols-1 gap-3 rounded-xl border border-white/50 bg-white/40 backdrop-blur-md p-4 sm:grid-cols-3">
+        <label className="space-y-1 text-sm">
+          <span className="font-medium">Estado</span>
+          <select
+            value={filtroEstado}
+            onChange={(e) => setFiltroEstado(e.target.value)}
+            className="input"
+          >
+            <option value="">Todos</option>
+            {ESTADOS.map((estado) => (
+              <option key={estado} value={estado}>
+                {ESTADO_LABEL[estado] ?? estado}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="space-y-1 text-sm">
+          <span className="font-medium">Desde</span>
+          <input
+            type="date"
+            value={filtroDesde}
+            onChange={(e) => setFiltroDesde(e.target.value)}
+            className="input"
+          />
+        </label>
+        <label className="space-y-1 text-sm">
+          <span className="font-medium">Hasta</span>
+          <input
+            type="date"
+            value={filtroHasta}
+            onChange={(e) => setFiltroHasta(e.target.value)}
+            className="input"
+          />
+        </label>
+      </div>
+
+      {!cargando && (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-white/50 bg-white/40 backdrop-blur-md px-4 py-3 text-sm">
+          <span className="font-medium">
+            {resumen.total} {resumen.total === 1 ? "fecha" : "fechas"}
+            {hayFiltrosActivos ? " con estos filtros" : " en total"}
+          </span>
+          {ESTADOS.map((estado) => (
+            <span
+              key={estado}
+              className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${ESTADO_BADGE[estado] ?? "bg-gray-100 text-gray-600"}`}
+            >
+              {resumen.porEstado[estado] ?? 0} {ESTADO_LABEL[estado] ?? estado}
+            </span>
+          ))}
+        </div>
       )}
 
       {mostrarForm && (
@@ -190,7 +285,7 @@ export default function FechasAcopioPage() {
               </tr>
             </thead>
             <tbody>
-              {fechas.map((f) => (
+              {filtradas.map((f) => (
                 <tr key={f.id} className="border-t border-white/50 even:bg-white/20">
                   <td className="px-3 py-2.5 font-medium">{f.puntoAcopio.nombre}</td>
                   <td className="px-3 py-2.5 whitespace-nowrap">{f.fecha.slice(0, 10)}</td>
@@ -222,10 +317,12 @@ export default function FechasAcopioPage() {
                   </td>
                 </tr>
               ))}
-              {fechas.length === 0 && (
+              {filtradas.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-3 py-6 text-center text-foreground/60">
-                    No hay fechas de acopio registradas.
+                    {fechas.length === 0
+                      ? "No hay fechas de acopio registradas."
+                      : "No hay resultados con estos filtros."}
                   </td>
                 </tr>
               )}
