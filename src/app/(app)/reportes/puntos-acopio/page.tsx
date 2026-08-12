@@ -86,8 +86,11 @@ export default function ReportePuntosAcopioPage() {
     try {
       const res = await fetch("/api/sync/notion-acopios", { method: "POST" });
       if (!res.ok) throw new Error(await res.text());
-      const { creados, actualizados } = await res.json();
-      setResultadoSync(`${creados} nuevos, ${actualizados} actualizados`);
+      const { creados, actualizados, fusionados } = await res.json();
+      setResultadoSync(
+        `${creados} nuevos, ${actualizados} actualizados` +
+          (fusionados ? `, ${fusionados} fusionados con fechas manuales` : ""),
+      );
       await cargar();
     } catch {
       setResultadoSync("Error al sincronizar con Notion");
