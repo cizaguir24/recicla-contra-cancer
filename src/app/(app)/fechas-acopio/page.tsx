@@ -13,6 +13,10 @@ type FechaAcopio = {
   fecha: string;
   estado: string;
   notas: string | null;
+  petKg: number | null;
+  tapasKg: number | null;
+  aluminioKg: number | null;
+  tapasWinsKg: number | null;
 };
 
 const FORM_INICIAL = {
@@ -36,6 +40,12 @@ export default function FechasAcopioPage() {
   const [filtroEstado, setFiltroEstado] = useState("");
   const [filtroDesde, setFiltroDesde] = useState("");
   const [filtroHasta, setFiltroHasta] = useState("");
+
+  const [seleccionadas, setSeleccionadas] = useState<string[]>([]);
+  const [fusionando, setFusionando] = useState(false);
+  const [conservarId, setConservarId] = useState<string | null>(null);
+  const [guardandoFusion, setGuardandoFusion] = useState(false);
+  const [errorFusion, setErrorFusion] = useState<string | null>(null);
 
   async function cargarDatos() {
     setCargando(true);
@@ -88,6 +98,39 @@ export default function FechasAcopioPage() {
     await cargarDatos();
   }
 
+  function alternarSeleccion(id: string) {
+    setSeleccionadas((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }
+
+  function cancelarFusion() {
+    setFusionando(false);
+    setConservarId(null);
+    setErrorFusion(null);
+  }
+
+  async function confirmarFusion() {
+    if (!conservarId) return;
+    setGuardandoFusion(true);
+    setErrorFusion(null);
+    const eliminarIds = seleccionadas.filter((id) => id !== conservarId);
+    const res = await fetch("/api/fechas-acopio/fusionar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conservarId, eliminarIds }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setErrorFusion(data.error || "Error al fusionar");
+      setGuardandoFusion(false);
+      return;
+    }
+    setSeleccionadas([]);
+    setFusionando(false);
+    setConservarId(null);
+    setGuardandoFusion(false);
+    await cargarDatos();
+  }
+
   const filtradas = useMemo(() => {
     return fechas.filter((f) => {
       const fechaStr = f.fecha.slice(0, 10);
@@ -107,6 +150,21 @@ export default function FechasAcopioPage() {
   }, [filtradas]);
 
   const hayFiltrosActivos = Boolean(filtroEstado || filtroDesde || filtroHasta);
+
+  const fechasSeleccionadas = useMemo(
+    () => fechas.filter((f) => seleccionadas.includes(f.id)),
+    [fechas, seleccionadas],
+  );
+  const mismoPunto =
+    fechasSeleccionadas.length >= 2 &&
+    fechasSeleccionadas.every((f) => f.puntoAcopioId === fechasSeleccionadas[0].puntoAcopioId);
+
+  function iniciarFusion() {
+    if (!mismoPunto) return;
+    setConservarId(null);
+    setErrorFusion(null);
+    setFusionando(true);
+  }
 
   const pdfHref = useMemo(() => {
     const params = new URLSearchParams();
@@ -133,6 +191,24 @@ export default function FechasAcopioPage() {
               Descargar PDF
             </span>
           )}
+          {esAdmin && seleccionadas.length >= 2 && (
+            <button
+              onClick={iniciarFusion}
+              disabled={!mismoPunto}
+              title={!mismoPunto ? "Selecciona fechas del mismo punto de acopio" : undefined}
+              className="rounded-xl border border-[var(--brand-blue)] px-3 py-2 text-sm font-medium text-[var(--brand-blue)] hover:bg-white/40 disabled:opacity-50"
+            >
+              Fusionar seleccionadas ({seleccionadas.length})
+            </button>
+          )}
+          {esAdmin && seleccionadas.length > 0 && (
+            <button
+              onClick={() => setSeleccionadas([])}
+              className="text-sm text-foreground/60 hover:underline"
+            >
+              Cancelar selección
+            </button>
+          )}
           {esAdmin && (
             <button
               onClick={abrirNuevo}
@@ -144,6 +220,11 @@ export default function FechasAcopioPage() {
           )}
         </div>
       </div>
+      {esAdmin && seleccionadas.length >= 2 && !mismoPunto && (
+        <p className="text-sm text-red-500">
+          Las fechas seleccionadas deben ser del mismo punto de acopio para poder fusionarlas.
+        </p>
+      )}
 
       {puntos.length === 0 && !cargando && (
         <p className="text-sm text-foreground/60">
@@ -274,6 +355,61 @@ export default function FechasAcopioPage() {
         </form>
       )}
 
+      {fusionando && (
+        <div className="space-y-3 rounded-xl border border-[var(--brand-blue)]/50 bg-white/40 backdrop-blur-md p-4">
+          <div>
+            <p className="font-medium">Fusionar {fechasSeleccionadas.length} fechas duplicadas</p>
+            <p className="text-sm text-foreground/60">
+              Elige cuál conservar. Las demás se eliminarán de la app. Si alguna de las que
+              elimines todavía existe como página en Notion, bórrala también ahí — de lo
+              contrario un futuro sync la puede volver a crear.
+            </p>
+          </div>
+          <div className="space-y-2">
+            {fechasSeleccionadas.map((f) => (
+              <label
+                key={f.id}
+                className="flex flex-wrap items-center gap-3 rounded-lg border border-white/50 bg-white/40 px-3 py-2 text-sm"
+              >
+                <input
+                  type="radio"
+                  name="conservar"
+                  checked={conservarId === f.id}
+                  onChange={() => setConservarId(f.id)}
+                />
+                <span className="whitespace-nowrap font-medium">{f.fecha.slice(0, 10)}</span>
+                <span
+                  className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${ESTADO_BADGE[f.estado] ?? "bg-gray-100 text-gray-600"}`}
+                >
+                  {ESTADO_LABEL[f.estado] ?? f.estado}
+                </span>
+                <span className="text-[var(--muted)]">
+                  Tapas {f.tapasKg ?? "—"} · PET {f.petKg ?? "—"} · Aluminio {f.aluminioKg ?? "—"}
+                </span>
+                {f.notas && <span className="text-[var(--muted)]">{f.notas}</span>}
+              </label>
+            ))}
+          </div>
+          {errorFusion && <p className="text-sm text-red-500">{errorFusion}</p>}
+          <div className="flex gap-2">
+            <button
+              onClick={confirmarFusion}
+              disabled={!conservarId || guardandoFusion}
+              className="rounded-xl bg-[var(--brand-blue)] px-3 py-2 text-sm font-medium text-[var(--accent-foreground)] shadow-sm disabled:opacity-50"
+            >
+              {guardandoFusion ? "Fusionando..." : "Confirmar fusión"}
+            </button>
+            <button
+              type="button"
+              onClick={cancelarFusion}
+              className="rounded-xl border border-white/50 bg-white/40 backdrop-blur-md px-3 py-2 text-sm hover:bg-white/40"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
       {cargando ? (
         <p className="text-sm text-foreground/60">Cargando...</p>
       ) : (
@@ -281,6 +417,7 @@ export default function FechasAcopioPage() {
           <table className="w-full text-sm">
             <thead className="bg-white/50 text-left">
               <tr>
+                {esAdmin && <th className="px-3 py-2"></th>}
                 <th className="px-3 py-2">Punto de acopio</th>
                 <th className="px-3 py-2 whitespace-nowrap">Fecha</th>
                 <th className="px-3 py-2">Estado</th>
@@ -291,6 +428,15 @@ export default function FechasAcopioPage() {
             <tbody>
               {filtradas.map((f) => (
                 <tr key={f.id} className="border-t border-white/50 even:bg-white/20">
+                  {esAdmin && (
+                    <td className="px-3 py-2.5">
+                      <input
+                        type="checkbox"
+                        checked={seleccionadas.includes(f.id)}
+                        onChange={() => alternarSeleccion(f.id)}
+                      />
+                    </td>
+                  )}
                   <td className="px-3 py-2.5 font-medium">{f.puntoAcopio.nombre}</td>
                   <td className="px-3 py-2.5 whitespace-nowrap">{f.fecha.slice(0, 10)}</td>
                   <td className="px-3 py-2.5">
@@ -323,7 +469,7 @@ export default function FechasAcopioPage() {
               ))}
               {filtradas.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-3 py-6 text-center text-foreground/60">
+                  <td colSpan={esAdmin ? 6 : 5} className="px-3 py-6 text-center text-foreground/60">
                     {fechas.length === 0
                       ? "No hay fechas de acopio registradas."
                       : "No hay resultados con estos filtros."}
