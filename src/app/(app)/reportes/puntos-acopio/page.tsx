@@ -86,11 +86,12 @@ export default function ReportePuntosAcopioPage() {
     try {
       const res = await fetch("/api/sync/notion-acopios", { method: "POST" });
       if (!res.ok) throw new Error(await res.text());
-      const { creados, actualizados, fusionados, canceladosPorDuplicado } = await res.json();
+      const { creados, actualizados, fusionados, canceladosPorDuplicado, total } = await res.json();
       setResultadoSync(
         `${creados} nuevos, ${actualizados} actualizados` +
           (fusionados ? `, ${fusionados} fusionados con fechas manuales` : "") +
-          (canceladosPorDuplicado ? `, ${canceladosPorDuplicado} cancelados por duplicado` : ""),
+          (canceladosPorDuplicado ? `, ${canceladosPorDuplicado} cancelados por duplicado` : "") +
+          ` (de ${total} páginas de Notion revisadas)`,
       );
       await cargar();
     } catch {
