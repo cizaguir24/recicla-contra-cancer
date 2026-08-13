@@ -139,6 +139,7 @@ export async function sincronizarNotion() {
 
   let creados = 0;
   let actualizados = 0;
+  let fusionados = 0;
 
   for (const page of pages) {
     const fechaStr = getDateStart(page, "Fecha de Acopio");
@@ -172,9 +173,31 @@ export async function sincronizarNotion() {
       totalTapas: getFormulaNumber(page, "Total Tapas"),
     };
 
-    const existente = await prisma.fechaAcopio.findUnique({
+    let existente = await prisma.fechaAcopio.findUnique({
       where: { notionPageId: page.id },
     });
+
+    // Si esta página de Notion todavía no tiene fila propia, busca si ya
+    // hay una fecha creada a mano (sin notionPageId, no cancelada) para el
+    // mismo punto: se fusiona con la más cercana en el tiempo a la fecha
+    // capturada (aunque no coincida el día exacto, ej. se programó para el
+    // 11 y la visita real fue el 13) en vez de crear una fila duplicada.
+    let fusionada = false;
+    if (!existente) {
+      const candidatas = await prisma.fechaAcopio.findMany({
+        where: { puntoAcopioId, notionPageId: null, estado: { not: "cancelada" } },
+      });
+      if (candidatas.length > 0) {
+        const fechaCaptura = new Date(fechaStr).getTime();
+        existente = candidatas.reduce((masCercana, actual) =>
+          Math.abs(actual.fecha.getTime() - fechaCaptura) <
+          Math.abs(masCercana.fecha.getTime() - fechaCaptura)
+            ? actual
+            : masCercana,
+        );
+        fusionada = true;
+      }
+    }
 
     // Una fecha "programada" pasa a "realizada" sola en cuanto Notion trae
     // kg capturados; nunca se toca "cancelada" ni se retrocede una que ya
@@ -187,10 +210,12 @@ export async function sincronizarNotion() {
         where: { id: existente.id },
         data: {
           ...datosNotion,
+          notionPageId: page.id,
           ...(debeMarcarRealizada && { estado: "realizada" }),
         },
       });
-      actualizados++;
+      if (fusionada) fusionados++;
+      else actualizados++;
     } else {
       await prisma.fechaAcopio.create({
         data: {
@@ -207,6 +232,7 @@ export async function sincronizarNotion() {
   return {
     creados,
     actualizados,
+    fusionados,
     total: pages.length,
     puntosCreados,
     puntosActualizados,
