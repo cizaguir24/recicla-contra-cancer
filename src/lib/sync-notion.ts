@@ -140,7 +140,7 @@ export async function sincronizarNotion() {
   let creados = 0;
   let actualizados = 0;
   let fusionados = 0;
-  let canceladosPorDuplicado = 0;
+  let duplicadosEliminados = 0;
 
   for (const page of pages) {
     const fechaStr = getDateStart(page, "Fecha de Acopio");
@@ -233,12 +233,15 @@ export async function sincronizarNotion() {
       creados++;
     }
 
-    // Si esta página ya trae kg reales, cancela la "programada" pendiente
+    // Si esta página ya trae kg reales, elimina la "programada" pendiente
     // (sin kg) más cercana en el tiempo del mismo punto que siga ligada a
     // OTRA página de Notion. Pasa cuando alguien agenda una fecha en Notion
-    // y, para la visita real, crea una página nueva en vez de editar esa —
-    // no se toca su notionPageId, solo se cancela, para que no vuelva a
-    // aparecer como duplicado en reportes ni se recree en un sync futuro.
+    // y, para la visita real, crea una página nueva en vez de editar esa: la
+    // fila programada se descarta para que solo quede la "realizada" en los
+    // reportes. Nota: si esa página programada sigue existiendo en Notion sin
+    // editar, un sync futuro la puede volver a traer como fila nueva — la
+    // forma correcta de evitarlo del todo es capturar los kg reales editando
+    // la misma página en Notion en vez de crear una nueva.
     if (yaConCaptura) {
       const pendientes = await prisma.fechaAcopio.findMany({
         where: { puntoAcopioId, estado: "programada", id: { not: filaFinalId } },
@@ -251,19 +254,8 @@ export async function sincronizarNotion() {
             ? a
             : b,
         );
-        await prisma.fechaAcopio.update({
-          where: { id: masCercana.id },
-          data: {
-            estado: "cancelada",
-            notas: [
-              masCercana.notas,
-              `Cancelada automáticamente: posible duplicado de la fecha ${fechaStr.slice(0, 10)}, ya con kg capturados.`,
-            ]
-              .filter(Boolean)
-              .join(" — "),
-          },
-        });
-        canceladosPorDuplicado++;
+        await prisma.fechaAcopio.delete({ where: { id: masCercana.id } });
+        duplicadosEliminados++;
       }
     }
   }
@@ -272,7 +264,7 @@ export async function sincronizarNotion() {
     creados,
     actualizados,
     fusionados,
-    canceladosPorDuplicado,
+    duplicadosEliminados,
     total: pages.length,
     puntosCreados,
     puntosActualizados,
