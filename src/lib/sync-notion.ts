@@ -178,22 +178,25 @@ export async function sincronizarNotion() {
     });
 
     // Si esta página de Notion todavía no tiene fila propia, busca si ya
-    // hay una fecha creada a mano (sin notionPageId) para el mismo punto y
-    // día: se fusiona con ella en vez de crear una fila duplicada.
+    // hay una fecha creada a mano (sin notionPageId, no cancelada) para el
+    // mismo punto: se fusiona con la más cercana en el tiempo a la fecha
+    // capturada (aunque no coincida el día exacto, ej. se programó para el
+    // 11 y la visita real fue el 13) en vez de crear una fila duplicada.
     let fusionada = false;
     if (!existente) {
-      const diaStr = fechaStr.slice(0, 10);
-      existente = await prisma.fechaAcopio.findFirst({
-        where: {
-          puntoAcopioId,
-          notionPageId: null,
-          fecha: {
-            gte: new Date(`${diaStr}T00:00:00.000Z`),
-            lte: new Date(`${diaStr}T23:59:59.999Z`),
-          },
-        },
+      const candidatas = await prisma.fechaAcopio.findMany({
+        where: { puntoAcopioId, notionPageId: null, estado: { not: "cancelada" } },
       });
-      fusionada = existente !== null;
+      if (candidatas.length > 0) {
+        const fechaCaptura = new Date(fechaStr).getTime();
+        existente = candidatas.reduce((masCercana, actual) =>
+          Math.abs(actual.fecha.getTime() - fechaCaptura) <
+          Math.abs(masCercana.fecha.getTime() - fechaCaptura)
+            ? actual
+            : masCercana,
+        );
+        fusionada = true;
+      }
     }
 
     // Una fecha "programada" pasa a "realizada" sola en cuanto Notion trae
