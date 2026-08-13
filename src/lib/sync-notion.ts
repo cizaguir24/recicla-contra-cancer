@@ -205,11 +205,9 @@ export async function sincronizarNotion() {
     // estaba "realizada" aunque los kg bajen a 0 en un sync posterior.
     const yaConCaptura = tieneKgCapturados(datosNotion);
 
-    let filaFinalId: string;
-
     if (existente) {
       const debeMarcarRealizada = existente.estado === "programada" && yaConCaptura;
-      const actualizada = await prisma.fechaAcopio.update({
+      await prisma.fechaAcopio.update({
         where: { id: existente.id },
         data: {
           ...datosNotion,
@@ -217,11 +215,10 @@ export async function sincronizarNotion() {
           ...(debeMarcarRealizada && { estado: "realizada" }),
         },
       });
-      filaFinalId = actualizada.id;
       if (fusionada) fusionados++;
       else actualizados++;
     } else {
-      const creada = await prisma.fechaAcopio.create({
+      await prisma.fechaAcopio.create({
         data: {
           ...datosNotion,
           estado: yaConCaptura ? "realizada" : "programada",
@@ -229,34 +226,7 @@ export async function sincronizarNotion() {
           notionPageId: page.id,
         },
       });
-      filaFinalId = creada.id;
       creados++;
-    }
-
-    // Si esta página ya trae kg reales, elimina la "programada" pendiente
-    // (sin kg) más cercana en el tiempo del mismo punto que siga ligada a
-    // OTRA página de Notion. Pasa cuando alguien agenda una fecha en Notion
-    // y, para la visita real, crea una página nueva en vez de editar esa: la
-    // fila programada se descarta para que solo quede la "realizada" en los
-    // reportes. Nota: si esa página programada sigue existiendo en Notion sin
-    // editar, un sync futuro la puede volver a traer como fila nueva — la
-    // forma correcta de evitarlo del todo es capturar los kg reales editando
-    // la misma página en Notion en vez de crear una nueva.
-    if (yaConCaptura) {
-      const pendientes = await prisma.fechaAcopio.findMany({
-        where: { puntoAcopioId, estado: "programada", id: { not: filaFinalId } },
-      });
-      const pendientesSinKg = pendientes.filter((f) => !tieneKgCapturados(f));
-      if (pendientesSinKg.length > 0) {
-        const fechaCaptura = new Date(fechaStr).getTime();
-        const masCercana = pendientesSinKg.reduce((a, b) =>
-          Math.abs(a.fecha.getTime() - fechaCaptura) < Math.abs(b.fecha.getTime() - fechaCaptura)
-            ? a
-            : b,
-        );
-        await prisma.fechaAcopio.delete({ where: { id: masCercana.id } });
-        duplicadosEliminados++;
-      }
     }
   }
 
@@ -264,7 +234,6 @@ export async function sincronizarNotion() {
     creados,
     actualizados,
     fusionados,
-    duplicadosEliminados,
     total: pages.length,
     puntosCreados,
     puntosActualizados,
