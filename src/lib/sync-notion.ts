@@ -140,6 +140,7 @@ export async function sincronizarNotion() {
   let creados = 0;
   let actualizados = 0;
   let fusionados = 0;
+  let canceladosPorDuplicado = 0;
 
   for (const page of pages) {
     const fechaStr = getDateStart(page, "Fecha de Acopio");
@@ -204,9 +205,11 @@ export async function sincronizarNotion() {
     // estaba "realizada" aunque los kg bajen a 0 en un sync posterior.
     const yaConCaptura = tieneKgCapturados(datosNotion);
 
+    let filaFinalId: string;
+
     if (existente) {
       const debeMarcarRealizada = existente.estado === "programada" && yaConCaptura;
-      await prisma.fechaAcopio.update({
+      const actualizada = await prisma.fechaAcopio.update({
         where: { id: existente.id },
         data: {
           ...datosNotion,
@@ -214,10 +217,11 @@ export async function sincronizarNotion() {
           ...(debeMarcarRealizada && { estado: "realizada" }),
         },
       });
+      filaFinalId = actualizada.id;
       if (fusionada) fusionados++;
       else actualizados++;
     } else {
-      await prisma.fechaAcopio.create({
+      const creada = await prisma.fechaAcopio.create({
         data: {
           ...datosNotion,
           estado: yaConCaptura ? "realizada" : "programada",
@@ -225,7 +229,42 @@ export async function sincronizarNotion() {
           notionPageId: page.id,
         },
       });
+      filaFinalId = creada.id;
       creados++;
+    }
+
+    // Si esta página ya trae kg reales, cancela la "programada" pendiente
+    // (sin kg) más cercana en el tiempo del mismo punto que siga ligada a
+    // OTRA página de Notion. Pasa cuando alguien agenda una fecha en Notion
+    // y, para la visita real, crea una página nueva en vez de editar esa —
+    // no se toca su notionPageId, solo se cancela, para que no vuelva a
+    // aparecer como duplicado en reportes ni se recree en un sync futuro.
+    if (yaConCaptura) {
+      const pendientes = await prisma.fechaAcopio.findMany({
+        where: { puntoAcopioId, estado: "programada", id: { not: filaFinalId } },
+      });
+      const pendientesSinKg = pendientes.filter((f) => !tieneKgCapturados(f));
+      if (pendientesSinKg.length > 0) {
+        const fechaCaptura = new Date(fechaStr).getTime();
+        const masCercana = pendientesSinKg.reduce((a, b) =>
+          Math.abs(a.fecha.getTime() - fechaCaptura) < Math.abs(b.fecha.getTime() - fechaCaptura)
+            ? a
+            : b,
+        );
+        await prisma.fechaAcopio.update({
+          where: { id: masCercana.id },
+          data: {
+            estado: "cancelada",
+            notas: [
+              masCercana.notas,
+              `Cancelada automáticamente: posible duplicado de la fecha ${fechaStr.slice(0, 10)}, ya con kg capturados.`,
+            ]
+              .filter(Boolean)
+              .join(" — "),
+          },
+        });
+        canceladosPorDuplicado++;
+      }
     }
   }
 
@@ -233,6 +272,7 @@ export async function sincronizarNotion() {
     creados,
     actualizados,
     fusionados,
+    canceladosPorDuplicado,
     total: pages.length,
     puntosCreados,
     puntosActualizados,
