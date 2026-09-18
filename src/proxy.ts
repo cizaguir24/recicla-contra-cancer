@@ -48,6 +48,12 @@ export default auth((req) => {
       if (bloqueado) {
         return NextResponse.json({ error: "No autorizado" }, { status: 403 });
       }
+
+      // Eliminar puntos de acopio queda reservado al rol Administrador,
+      // aunque el rol tenga el permiso general de Puntos de Acopio.
+      if (req.method === "DELETE" && pathname.startsWith("/api/puntos-acopio") && !permisos?.esAdministrador) {
+        return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+      }
     }
 
     if (pathname.startsWith("/configuracion") && !permisos?.configuracion) {

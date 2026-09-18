@@ -44,7 +44,7 @@ const FORM_INICIAL = {
 };
 
 export default function PuntosAcopioPage() {
-  const { puntosAcopio: esAdmin } = usePermisos();
+  const { puntosAcopio: esAdmin, esAdministrador } = usePermisos();
   const [puntos, setPuntos] = useState<PuntoAcopio[]>([]);
   const [cargando, setCargando] = useState(true);
   const [editId, setEditId] = useState<string | null>(null);
@@ -182,22 +182,22 @@ export default function PuntosAcopioPage() {
                     {p.activo ? "Activo" : "Inactivo"}
                   </span>
                   {esAdmin && (
-                    <>
-                      <button
-                        onClick={() => abrirEdicion(p)}
-                        title="Editar"
-                        className="rounded p-1 text-[var(--muted)] hover:bg-white/60 hover:text-[var(--brand-blue)]"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        onClick={(ev) => eliminar(ev, p.id)}
-                        title="Eliminar"
-                        className="rounded p-1 text-[var(--muted)] hover:bg-red-50 hover:text-red-500"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </>
+                    <button
+                      onClick={() => abrirEdicion(p)}
+                      title="Editar"
+                      className="rounded p-1 text-[var(--muted)] hover:bg-white/60 hover:text-[var(--brand-blue)]"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                  {esAdministrador && (
+                    <button
+                      onClick={(ev) => eliminar(ev, p.id)}
+                      title="Eliminar"
+                      className="rounded p-1 text-[var(--muted)] hover:bg-red-50 hover:text-red-500"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
                   )}
                 </div>
               </div>
