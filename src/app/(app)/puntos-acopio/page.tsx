@@ -204,10 +204,7 @@ export default function PuntosAcopioPage() {
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {puntosFiltrados.map((p) => (
-            <div
-              key={p.id}
-              className="rounded-xl border border-white/60 bg-white/40 p-4 shadow-lg shadow-black/5 backdrop-blur-md backdrop-saturate-150"
-            >
+            <div key={p.id} className="glass-card p-4 backdrop-saturate-150">
               <div className="mb-1 flex items-start justify-between gap-2">
                 <h2 className="font-semibold text-[var(--foreground)]">{p.nombre}</h2>
                 <div className="flex shrink-0 items-center gap-2">
@@ -260,9 +257,9 @@ export default function PuntosAcopioPage() {
                 )}
               </div>
 
-              <div className="mb-2 rounded-lg bg-white/40 p-3 text-xs">
-                <p className="text-[var(--muted)]">Materiales</p>
-                <p className="font-medium text-[var(--foreground)]">{p.materiales}</p>
+              <div className="glass-row mb-2 p-3 text-xs">
+                <p className="text-[var(--text-secondary)]">Materiales</p>
+                <p className="font-medium text-[var(--text-primary)]">{p.materiales}</p>
               </div>
 
               {(p.responsable || p.contacto) && (
