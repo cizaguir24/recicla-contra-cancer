@@ -45,6 +45,13 @@ const FORM_INICIAL = {
   activo: true,
 };
 
+const MATERIALES_OPCIONES = ["Tapas", "PET", "Aluminio"];
+
+function materialesDesdeString(materiales: string): string[] {
+  const partes = materiales.split(",").map((s) => s.trim().toLowerCase());
+  return MATERIALES_OPCIONES.filter((op) => partes.includes(op.toLowerCase()));
+}
+
 export default function PuntosAcopioPage() {
   const { puntosAcopio: esAdmin, esAdministrador } = usePermisos();
   const [puntos, setPuntos] = useState<PuntoAcopio[]>([]);
@@ -104,8 +111,21 @@ export default function PuntosAcopioPage() {
     setUbicacionEditando(null);
   }
 
+  function alternarMaterial(material: string) {
+    const actuales = materialesDesdeString(form.materiales);
+    const nuevos = actuales.includes(material)
+      ? actuales.filter((m) => m !== material)
+      : [...actuales, material];
+    const ordenados = MATERIALES_OPCIONES.filter((op) => nuevos.includes(op));
+    setForm({ ...form, materiales: ordenados.join(", ") });
+  }
+
   async function guardar(e: React.FormEvent) {
     e.preventDefault();
+    if (materialesDesdeString(form.materiales).length === 0) {
+      alert("Selecciona al menos un material aceptado.");
+      return;
+    }
     setGuardando(true);
     const url = editId ? `/api/puntos-acopio/${editId}` : "/api/puntos-acopio";
     const method = editId ? "PATCH" : "POST";
@@ -361,15 +381,21 @@ export default function PuntosAcopioPage() {
                   />
                 </Campo>
               </div>
-              <Campo label="Materiales aceptados">
-                <input
-                  required
-                  placeholder="papel, cartón, plástico PET, aluminio"
-                  value={form.materiales}
-                  onChange={(e) => setForm({ ...form, materiales: e.target.value })}
-                  className="input"
-                />
-              </Campo>
+              <div className="space-y-1 text-sm">
+                <span className="font-medium">Materiales aceptados</span>
+                <div className="flex flex-wrap gap-4 pt-1">
+                  {MATERIALES_OPCIONES.map((material) => (
+                    <label key={material} className="flex items-center gap-1.5">
+                      <input
+                        type="checkbox"
+                        checked={materialesDesdeString(form.materiales).includes(material)}
+                        onChange={() => alternarMaterial(material)}
+                      />
+                      {material}
+                    </label>
+                  ))}
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <Campo label="Responsable">
                   <input
