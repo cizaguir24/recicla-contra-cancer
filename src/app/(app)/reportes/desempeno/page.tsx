@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { MapPin, Phone, Mail, PackageSearch, Pencil, X } from "lucide-react";
+import { MapPin, Phone, Mail, PackageSearch, Pencil, X, Search } from "lucide-react";
 import { usePermisos } from "@/lib/role-context";
 import SearchBar from "@/components/SearchBar";
 import { coincideBusqueda } from "@/lib/texto";
@@ -100,6 +100,25 @@ const FORM_EDICION_VACIO = {
   correoElectronico: "",
 };
 
+type PuntoResumen = {
+  id: string;
+  nombre: string;
+  direccion: string;
+  responsable: string | null;
+  tipoContenedor: string | null;
+  activo: boolean;
+};
+
+type MovimientoHistorial = {
+  id: string;
+  puntoOrigen: { nombre: string };
+  puntoDestino: { nombre: string };
+  tipoContenedor: string;
+  motivo: string | null;
+  usuario: { name: string };
+  createdAt: string;
+};
+
 export default function DesempenoPage() {
   const { puntosAcopio: esAdmin } = usePermisos();
   const [filas, setFilas] = useState<FilaDesempeno[]>([]);
@@ -110,6 +129,14 @@ export default function DesempenoPage() {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [form, setForm] = useState(FORM_EDICION_VACIO);
   const [guardando, setGuardando] = useState(false);
+
+  const [puntosActivos, setPuntosActivos] = useState<PuntoResumen[] | null>(null);
+  const [destinoId, setDestinoId] = useState<string | null>(null);
+  const [busquedaDestino, setBusquedaDestino] = useState("");
+  const [mostrarListaDestino, setMostrarListaDestino] = useState(false);
+  const [motivoReubicacion, setMotivoReubicacion] = useState("");
+  const [errorReubicacion, setErrorReubicacion] = useState<string | null>(null);
+  const [historial, setHistorial] = useState<MovimientoHistorial[] | null>(null);
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -133,16 +160,56 @@ export default function DesempenoPage() {
       numeroCelular: f.numeroCelular ?? "",
       correoElectronico: f.correoElectronico ?? "",
     });
+    setDestinoId(null);
+    setBusquedaDestino("");
+    setMostrarListaDestino(false);
+    setMotivoReubicacion("");
+    setErrorReubicacion(null);
+    setPuntosActivos(null);
+    setHistorial(null);
+    fetch(`/api/puntos-acopio/${f.id}/reubicar`)
+      .then((r) => r.json())
+      .then(setHistorial)
+      .catch(() => setHistorial([]));
   }
 
   function cerrarEdicion() {
     setEditandoId(null);
     setForm(FORM_EDICION_VACIO);
+    setDestinoId(null);
+    setBusquedaDestino("");
+    setMostrarListaDestino(false);
+    setMotivoReubicacion("");
+    setErrorReubicacion(null);
+    setPuntosActivos(null);
+    setHistorial(null);
+  }
+
+  function cambiarDecisionReubicacion(valor: string) {
+    setForm((f) => ({ ...f, decisionReubicacion: valor }));
+    setErrorReubicacion(null);
+    if (valor !== "Reubicar") {
+      setDestinoId(null);
+      setBusquedaDestino("");
+      setMostrarListaDestino(false);
+      return;
+    }
+    if (puntosActivos === null) {
+      fetch("/api/puntos-acopio")
+        .then((r) => r.json())
+        .then(setPuntosActivos);
+    }
   }
 
   async function guardarEdicion(e: React.FormEvent) {
     e.preventDefault();
     if (!editandoId) return;
+
+    if (form.decisionReubicacion === "Reubicar") {
+      await confirmarYReubicar();
+      return;
+    }
+
     setGuardando(true);
     await fetch(`/api/puntos-acopio/${editandoId}`, {
       method: "PATCH",
@@ -153,6 +220,64 @@ export default function DesempenoPage() {
     cerrarEdicion();
     await cargar();
   }
+
+  async function confirmarYReubicar() {
+    if (!editandoId) return;
+    setErrorReubicacion(null);
+
+    if (!destinoId) {
+      setErrorReubicacion("Selecciona el nuevo punto de acopio destino.");
+      return;
+    }
+
+    const origenActual = filas.find((f) => f.id === editandoId);
+    if (!origenActual?.tipoContenedor) {
+      setErrorReubicacion("Este punto no tiene un contenedor asignado para reubicar.");
+      return;
+    }
+
+    const destinoNombre = puntosActivos?.find((p) => p.id === destinoId)?.nombre ?? "";
+    const confirmado = confirm(
+      `El contenedor se reubicará de "${origenActual.nombre}" a "${destinoNombre}". La ubicación anterior quedará inactiva o sin contenedor asignado. ¿Deseas continuar?`,
+    );
+    if (!confirmado) return;
+
+    setGuardando(true);
+    try {
+      const res = await fetch(`/api/puntos-acopio/${editandoId}/reubicar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ puntoDestinoId: destinoId, motivo: motivoReubicacion || undefined }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setErrorReubicacion(data.error || "No se pudo reubicar el contenedor.");
+        return;
+      }
+      cerrarEdicion();
+      await cargar();
+      alert(
+        "Contenedor reubicado correctamente. La ubicación anterior quedó sin contenedor y la nueva ubicación fue actualizada.",
+      );
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  const opcionesDestino = useMemo(() => {
+    if (!puntosActivos) return [];
+    return puntosActivos.filter(
+      (p) =>
+        p.activo &&
+        p.id !== editandoId &&
+        (!busquedaDestino || coincideBusqueda(busquedaDestino, p.nombre, p.direccion, p.responsable)),
+    );
+  }, [puntosActivos, editandoId, busquedaDestino]);
+
+  const destinoSeleccionado = useMemo(
+    () => puntosActivos?.find((p) => p.id === destinoId) ?? null,
+    [puntosActivos, destinoId],
+  );
 
   const contenedores = useMemo(() => {
     const nombres = new Set(filas.map((f) => f.tipoContenedor).filter((c): c is string => !!c));
@@ -421,7 +546,7 @@ export default function DesempenoPage() {
                 <span className="mb-1 block font-medium">Decisión de Reubicación</span>
                 <select
                   value={form.decisionReubicacion}
-                  onChange={(e) => setForm((f) => ({ ...f, decisionReubicacion: e.target.value }))}
+                  onChange={(e) => cambiarDecisionReubicacion(e.target.value)}
                   className="input"
                 >
                   <option value="">Sin especificar</option>
@@ -432,6 +557,98 @@ export default function DesempenoPage() {
                   ))}
                 </select>
               </label>
+
+              {form.decisionReubicacion === "Reubicar" && (
+                <div className="space-y-2 rounded-xl border border-[var(--brand-blue)]/40 bg-[var(--brand-blue-light)]/40 p-3">
+                  <label className="block text-sm">
+                    <span className="mb-1 block font-medium">
+                      Nuevo punto de acopio <span className="text-red-500">*</span>
+                    </span>
+                    {destinoSeleccionado ? (
+                      <div className="flex items-start justify-between gap-2 rounded-lg border border-white/60 bg-white/70 p-2 text-xs">
+                        <div>
+                          <p className="font-medium text-[var(--foreground)]">{destinoSeleccionado.nombre}</p>
+                          <p className="text-[var(--muted)]">{destinoSeleccionado.direccion}</p>
+                          {destinoSeleccionado.responsable && (
+                            <p className="text-[var(--muted)]">Responsable: {destinoSeleccionado.responsable}</p>
+                          )}
+                          <p className="text-[var(--muted)]">
+                            {destinoSeleccionado.tipoContenedor
+                              ? `Ya tiene contenedor: ${destinoSeleccionado.tipoContenedor}`
+                              : "Sin contenedor asignado"}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDestinoId(null);
+                            setMostrarListaDestino(true);
+                          }}
+                          className="shrink-0 text-[var(--brand-blue)] hover:underline"
+                        >
+                          Cambiar
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="relative">
+                        <div className="relative">
+                          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
+                          <input
+                            value={busquedaDestino}
+                            onChange={(e) => {
+                              setBusquedaDestino(e.target.value);
+                              setMostrarListaDestino(true);
+                            }}
+                            onFocus={() => setMostrarListaDestino(true)}
+                            placeholder="Buscar punto de acopio destino…"
+                            className="input w-full pl-9"
+                          />
+                        </div>
+                        {mostrarListaDestino && (
+                          <div className="absolute z-10 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-white/60 bg-white shadow-lg">
+                            {puntosActivos === null ? (
+                              <p className="p-2 text-xs text-[var(--muted)]">Cargando puntos de acopio…</p>
+                            ) : opcionesDestino.length === 0 ? (
+                              <p className="p-2 text-xs text-[var(--muted)]">Sin resultados.</p>
+                            ) : (
+                              opcionesDestino.map((p) => (
+                                <button
+                                  type="button"
+                                  key={p.id}
+                                  onClick={() => {
+                                    setDestinoId(p.id);
+                                    setMostrarListaDestino(false);
+                                    setErrorReubicacion(null);
+                                  }}
+                                  className="block w-full border-b border-[var(--border)] p-2 text-left text-xs last:border-b-0 hover:bg-[var(--brand-blue-light)]"
+                                >
+                                  <p className="font-medium text-[var(--foreground)]">{p.nombre}</p>
+                                  <p className="text-[var(--muted)]">{p.direccion}</p>
+                                  {p.responsable && <p className="text-[var(--muted)]">Responsable: {p.responsable}</p>}
+                                  <p className="text-[var(--muted)]">
+                                    {p.tipoContenedor ? `Ya tiene contenedor: ${p.tipoContenedor}` : "Sin contenedor asignado"} · Activo
+                                  </p>
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </label>
+                  <label className="block text-sm">
+                    <span className="mb-1 block font-medium">Motivo de la reubicación (opcional)</span>
+                    <input
+                      value={motivoReubicacion}
+                      onChange={(e) => setMotivoReubicacion(e.target.value)}
+                      className="input"
+                    />
+                  </label>
+                </div>
+              )}
+
+              {errorReubicacion && <p className="text-xs text-red-600">{errorReubicacion}</p>}
+
               <label className="block text-sm">
                 <span className="mb-1 block font-medium">Número Celular</span>
                 <input
@@ -458,8 +675,30 @@ export default function DesempenoPage() {
                 disabled={guardando}
                 className="w-full rounded-xl bg-[var(--brand-blue)] py-2.5 text-sm font-semibold text-white disabled:opacity-50"
               >
-                {guardando ? "Guardando…" : "Guardar cambios"}
+                {guardando
+                  ? form.decisionReubicacion === "Reubicar"
+                    ? "Reubicando…"
+                    : "Guardando…"
+                  : form.decisionReubicacion === "Reubicar"
+                    ? "Confirmar reubicación"
+                    : "Guardar cambios"}
               </button>
+              {historial && historial.length > 0 && (
+                <div className="border-t border-[var(--border)] pt-3">
+                  <p className="mb-1.5 text-xs font-medium text-[var(--muted)]">
+                    Historial de reubicaciones
+                  </p>
+                  <div className="max-h-32 space-y-1.5 overflow-y-auto text-[11px] text-[var(--muted)]">
+                    {historial.map((m) => (
+                      <p key={m.id}>
+                        {new Date(m.createdAt).toLocaleDateString("es-MX")} — {m.puntoOrigen.nombre} →{" "}
+                        {m.puntoDestino.nombre} ({m.tipoContenedor}) por {m.usuario.name}
+                        {m.motivo ? ` — ${m.motivo}` : ""}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              )}
             </form>
           </div>
         </div>

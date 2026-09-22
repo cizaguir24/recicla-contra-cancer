@@ -73,6 +73,28 @@ export async function setCheckboxProperty(
   }
 }
 
+// Segunda escritura hacia Notion (mismo patrón que setCheckboxProperty): usada
+// al reubicar un contenedor, para reflejar el nuevo "Tipo de contenedor" y
+// "Decisión de Reubicación" en origen y destino y que el próximo sync no los
+// pise con el valor viejo. La app siempre gana.
+export async function setSelectProperty(
+  pageId: string,
+  propName: string,
+  value: string | null,
+): Promise<void> {
+  const res = await fetch(`${NOTION_API_BASE}/pages/${pageId}`, {
+    method: "PATCH",
+    headers: notionHeaders(),
+    body: JSON.stringify({
+      properties: { [propName]: { select: value ? { name: value } : null } },
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Notion updatePage falló (${res.status}): ${await res.text()}`);
+  }
+}
+
 export function getTitleText(page: NotionPage, propName: string): string {
   const prop = page.properties[propName];
   if (!prop || prop.type !== "title") return "";

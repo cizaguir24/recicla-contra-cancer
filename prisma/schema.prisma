@@ -34,6 +34,7 @@ model User {
   activo    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  movimientosReubicacion MovimientoReubicacion[]
 }
 
 model PuntoAcopio {
@@ -59,6 +60,25 @@ model PuntoAcopio {
   updatedAt    DateTime      @updatedAt
   fechas       FechaAcopio[]
   manifiestos  Manifiesto[]
+  movimientosComoOrigen  MovimientoReubicacion[] @relation("MovimientoOrigen")
+  movimientosComoDestino MovimientoReubicacion[] @relation("MovimientoDestino")
+}
+
+// Historial de reubicaciones de contenedor entre dos puntos de acopio. No
+// existe una entidad "Contenedor" independiente en este sistema — lo que se
+// mueve es el valor de PuntoAcopio.tipoContenedor de un punto a otro; esta
+// tabla es el único registro de que ese movimiento ocurrió.
+model MovimientoReubicacion {
+  id             String      @id @default(cuid())
+  puntoOrigen    PuntoAcopio @relation("MovimientoOrigen", fields: [puntoOrigenId], references: [id])
+  puntoOrigenId  String
+  puntoDestino   PuntoAcopio @relation("MovimientoDestino", fields: [puntoDestinoId], references: [id])
+  puntoDestinoId String
+  tipoContenedor String // valor de tipoContenedor movido del origen al destino
+  motivo         String?
+  usuario        User        @relation(fields: [usuarioId], references: [id])
+  usuarioId      String
+  createdAt      DateTime    @default(now())
 }
 
 model FechaAcopio {
