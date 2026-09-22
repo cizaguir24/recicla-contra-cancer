@@ -20,6 +20,7 @@ export async function POST(request: NextRequest) {
       responsable: body.responsable || null,
       contacto: body.contacto || null,
       estado: body.estado || null,
+      googleMapsUrl: body.googleMapsUrl || null,
       activo: body.activo ?? true,
     },
   });

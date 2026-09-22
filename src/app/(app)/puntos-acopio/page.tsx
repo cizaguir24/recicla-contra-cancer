@@ -27,6 +27,7 @@ type PuntoAcopio = {
   materiales: string;
   responsable: string | null;
   contacto: string | null;
+  googleMapsUrl: string | null;
   activo: boolean;
   lat: number | null;
   lng: number | null;
@@ -40,6 +41,7 @@ const FORM_INICIAL = {
   materiales: "",
   responsable: "",
   contacto: "",
+  googleMapsUrl: "",
   activo: true,
 };
 
@@ -52,6 +54,7 @@ export default function PuntosAcopioPage() {
   const [form, setForm] = useState(FORM_INICIAL);
   const [guardando, setGuardando] = useState(false);
   const [busqueda, setBusqueda] = useState("");
+  const [filtroActivo, setFiltroActivo] = useState<"activos" | "inactivos" | "todos">("activos");
   const [mostrarMapa, setMostrarMapa] = useState(true);
   const [ubicacionEditando, setUbicacionEditando] = useState<{
     lat: number | null;
@@ -87,6 +90,7 @@ export default function PuntosAcopioPage() {
       materiales: punto.materiales,
       responsable: punto.responsable ?? "",
       contacto: punto.contacto ?? "",
+      googleMapsUrl: punto.googleMapsUrl ?? "",
       activo: punto.activo,
     });
     setUbicacionEditando({ lat: punto.lat, lng: punto.lng });
@@ -124,11 +128,13 @@ export default function PuntosAcopioPage() {
   }
 
   const puntosFiltrados = useMemo(() => {
-    if (!busqueda) return puntos;
-    return puntos.filter((p) =>
-      coincideBusqueda(busqueda, p.nombre, p.zona, p.responsable),
-    );
-  }, [puntos, busqueda]);
+    return puntos.filter((p) => {
+      if (filtroActivo === "activos" && !p.activo) return false;
+      if (filtroActivo === "inactivos" && p.activo) return false;
+      if (busqueda && !coincideBusqueda(busqueda, p.nombre, p.zona, p.responsable)) return false;
+      return true;
+    });
+  }, [puntos, busqueda, filtroActivo]);
 
   return (
     <div className="space-y-6">
@@ -160,7 +166,18 @@ export default function PuntosAcopioPage() {
 
       {mostrarMapa && <PuntosAcopioMap puntos={puntosFiltrados} />}
 
-      <SearchBar value={busqueda} onChange={setBusqueda} className="sm:max-w-md" />
+      <div className="flex flex-wrap items-center gap-3">
+        <SearchBar value={busqueda} onChange={setBusqueda} className="sm:max-w-md" />
+        <select
+          value={filtroActivo}
+          onChange={(e) => setFiltroActivo(e.target.value as "activos" | "inactivos" | "todos")}
+          className="input w-auto"
+        >
+          <option value="activos">Activos</option>
+          <option value="inactivos">Inactivos</option>
+          <option value="todos">Todos</option>
+        </select>
+      </div>
 
       {cargando ? (
         <p className="text-sm text-foreground/60">Cargando...</p>
@@ -202,14 +219,26 @@ export default function PuntosAcopioPage() {
                 </div>
               </div>
 
-              <p className="mb-3 flex items-start gap-1 text-xs text-[var(--muted)]">
-                <MapPin className="mt-0.5 h-3 w-3 shrink-0" />
-                <span>
-                  {p.direccion ? limpiarDireccionDuplicada(p.direccion) : "Sin dirección"}
-                  {p.zona ? `, ${p.zona}` : ""}
-                  {p.estado ? `, ${p.estado}` : ""}
-                </span>
-              </p>
+              <div className="mb-3">
+                <p className="flex items-start gap-1 text-xs text-[var(--muted)]">
+                  <MapPin className="mt-0.5 h-3 w-3 shrink-0" />
+                  <span>
+                    {p.direccion ? limpiarDireccionDuplicada(p.direccion) : "Sin dirección"}
+                    {p.zona ? `, ${p.zona}` : ""}
+                    {p.estado ? `, ${p.estado}` : ""}
+                  </span>
+                </p>
+                {p.googleMapsUrl && (
+                  <a
+                    href={p.googleMapsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-1 inline-flex items-center gap-1 text-xs text-[var(--brand-blue)] hover:underline"
+                  >
+                    <MapIcon className="h-3 w-3 shrink-0" /> Ver en Google Maps
+                  </a>
+                )}
+              </div>
 
               <div className="mb-2 rounded-lg bg-white/40 p-3 text-xs">
                 <p className="text-[var(--muted)]">Materiales</p>
@@ -253,7 +282,9 @@ export default function PuntosAcopioPage() {
               <p className="text-sm text-[var(--muted)]">
                 {busqueda
                   ? "No se encontraron puntos de acopio que coincidan con tu búsqueda."
-                  : "No hay puntos de acopio registrados."}
+                  : filtroActivo !== "todos"
+                    ? `No hay puntos de acopio ${filtroActivo === "activos" ? "activos" : "inactivos"}.`
+                    : "No hay puntos de acopio registrados."}
               </p>
               {busqueda && (
                 <button
@@ -305,6 +336,15 @@ export default function PuntosAcopioPage() {
                   mensajeVacio="Este punto todavía no tiene ubicación geocodificada."
                 />
               )}
+              <Campo label="URL de Google Maps (opcional)">
+                <input
+                  type="url"
+                  placeholder="https://maps.app.goo.gl/..."
+                  value={form.googleMapsUrl}
+                  onChange={(e) => setForm({ ...form, googleMapsUrl: e.target.value })}
+                  className="input"
+                />
+              </Campo>
               <div className="grid grid-cols-2 gap-3">
                 <Campo label="Municipio">
                   <input
