@@ -52,6 +52,27 @@ export async function getPage(pageId: string): Promise<NotionPage> {
   return res.json();
 }
 
+// Única escritura hacia Notion en todo el proyecto: refleja el Activo/Inactivo
+// de la app en la casilla "Activo (sistema)" de Ubicaciones. La app siempre
+// gana (no compara nada contra el valor actual en Notion antes de escribir).
+export async function setCheckboxProperty(
+  pageId: string,
+  propName: string,
+  checked: boolean,
+): Promise<void> {
+  const res = await fetch(`${NOTION_API_BASE}/pages/${pageId}`, {
+    method: "PATCH",
+    headers: notionHeaders(),
+    body: JSON.stringify({
+      properties: { [propName]: { checkbox: checked } },
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Notion updatePage falló (${res.status}): ${await res.text()}`);
+  }
+}
+
 export function getTitleText(page: NotionPage, propName: string): string {
   const prop = page.properties[propName];
   if (!prop || prop.type !== "title") return "";

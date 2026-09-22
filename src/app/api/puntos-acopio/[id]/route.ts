@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@/generated/prisma/client";
+import { setCheckboxProperty } from "@/lib/notion";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -36,6 +37,18 @@ export async function PATCH(request: NextRequest, { params }: Context) {
   if ("googleMapsUrl" in body) data.googleMapsUrl = body.googleMapsUrl || null;
 
   const punto = await prisma.puntoAcopio.update({ where: { id }, data });
+
+  // Único caso con escritura hacia Notion: refleja Activo/Inactivo en la
+  // casilla "Activo (sistema)" de Ubicaciones. Solo aplica a puntos que
+  // vinieron de Notion (tienen notionPageId); si falla, no tumba la
+  // actualización ya guardada en la app.
+  if ("activo" in body && punto.notionPageId) {
+    try {
+      await setCheckboxProperty(punto.notionPageId, "Activo (sistema)", punto.activo);
+    } catch (err) {
+      console.error("No se pudo reflejar Activo en Notion:", err);
+    }
+  }
 
   return NextResponse.json(punto);
 }
