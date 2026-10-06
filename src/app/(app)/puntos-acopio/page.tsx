@@ -8,6 +8,7 @@ import { usePermisos } from "@/lib/role-context";
 import SearchBar from "@/components/SearchBar";
 import { coincideBusqueda } from "@/lib/texto";
 import { limpiarDireccionDuplicada } from "@/lib/direccion";
+import { componerDireccion, partesConsistentes } from "@/lib/direccion-compuesta";
 
 const PuntosAcopioMap = dynamic(() => import("@/components/PuntosAcopioMap"), {
   ssr: false,
@@ -22,6 +23,10 @@ type PuntoAcopio = {
   id: string;
   nombre: string;
   direccion: string;
+  calle: string | null;
+  numeroExterior: string | null;
+  numeroInterior: string | null;
+  notionPageId: string | null;
   zona: string | null;
   estado: string | null;
   materiales: string;
@@ -36,6 +41,9 @@ type PuntoAcopio = {
 const FORM_INICIAL = {
   nombre: "",
   direccion: "",
+  calle: "",
+  numeroExterior: "",
+  numeroInterior: "",
   zona: "",
   estado: "",
   materiales: "",
@@ -60,6 +68,9 @@ export default function PuntosAcopioPage() {
   const [mostrarForm, setMostrarForm] = useState(false);
   const [form, setForm] = useState(FORM_INICIAL);
   const [guardando, setGuardando] = useState(false);
+  // El punto en edición viene de Notion / sus partes de dirección se editan por separado.
+  const [editaVinculado, setEditaVinculado] = useState(false);
+  const [editaPorPartes, setEditaPorPartes] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const [filtroActivo, setFiltroActivo] = useState<"activos" | "inactivos" | "todos">("activos");
   const [mostrarMapa, setMostrarMapa] = useState(true);
@@ -83,6 +94,8 @@ export default function PuntosAcopioPage() {
   function abrirNuevo() {
     setEditId(null);
     setForm(FORM_INICIAL);
+    setEditaVinculado(false);
+    setEditaPorPartes(false);
     setUbicacionEditando(null);
     setMostrarForm(true);
   }
@@ -92,6 +105,9 @@ export default function PuntosAcopioPage() {
     setForm({
       nombre: punto.nombre,
       direccion: punto.direccion,
+      calle: punto.calle ?? "",
+      numeroExterior: punto.numeroExterior ?? "",
+      numeroInterior: punto.numeroInterior ?? "",
       zona: punto.zona ?? "",
       estado: punto.estado ?? "",
       materiales: punto.materiales,
@@ -100,6 +116,8 @@ export default function PuntosAcopioPage() {
       googleMapsUrl: punto.googleMapsUrl ?? "",
       activo: punto.activo,
     });
+    setEditaVinculado(!!punto.notionPageId);
+    setEditaPorPartes(partesConsistentes(punto));
     setUbicacionEditando({ lat: punto.lat, lng: punto.lng });
     setMostrarForm(true);
   }
@@ -108,6 +126,8 @@ export default function PuntosAcopioPage() {
     setMostrarForm(false);
     setEditId(null);
     setForm(FORM_INICIAL);
+    setEditaVinculado(false);
+    setEditaPorPartes(false);
     setUbicacionEditando(null);
   }
 
@@ -129,14 +149,30 @@ export default function PuntosAcopioPage() {
     setGuardando(true);
     const url = editId ? `/api/puntos-acopio/${editId}` : "/api/puntos-acopio";
     const method = editId ? "PATCH" : "POST";
-    await fetch(url, {
+    // Con partes de dirección se mandan calle/números (el servidor arma
+    // `direccion`); sin ellas se manda `direccion` como una sola cadena.
+    const { calle, numeroExterior, numeroInterior, direccion, ...resto } = form;
+    const payload =
+      editId && editaPorPartes
+        ? { ...resto, calle, numeroExterior, numeroInterior }
+        : { ...resto, direccion };
+    const res = await fetch(url, {
       method,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify(payload),
     });
     setGuardando(false);
     cerrarForm();
     await cargarPuntos();
+    if (res.headers.get("X-Notion-Sync") === "error") {
+      alert(
+        "Se guardó en la app, pero no se pudo reflejar en Notion. El próximo \"Sincronizar con Notion\" podría revertir ese cambio.",
+      );
+    } else if (res.headers.get("X-Geocode") === "fallo") {
+      alert(
+        "Se guardó, pero no se pudo ubicar la nueva dirección en el mapa. Se conservó la ubicación anterior.",
+      );
+    }
   }
 
   async function eliminar(ev: React.MouseEvent, id: string) {
@@ -336,17 +372,48 @@ export default function PuntosAcopioPage() {
                   className="input"
                 />
               </Campo>
-              <Campo label="Dirección">
-                <input
-                  required
-                  value={form.direccion}
-                  onChange={(e) => setForm({ ...form, direccion: e.target.value })}
-                  className="input"
-                />
-              </Campo>
+              {editId && editaPorPartes ? (
+                <>
+                  <Campo label="Calle">
+                    <input
+                      value={form.calle}
+                      onChange={(e) => setForm({ ...form, calle: e.target.value })}
+                      className="input"
+                    />
+                  </Campo>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Campo label="Número exterior">
+                      <input
+                        value={form.numeroExterior}
+                        onChange={(e) => setForm({ ...form, numeroExterior: e.target.value })}
+                        className="input"
+                      />
+                    </Campo>
+                    <Campo label="Número interior">
+                      <input
+                        value={form.numeroInterior}
+                        onChange={(e) => setForm({ ...form, numeroInterior: e.target.value })}
+                        className="input"
+                      />
+                    </Campo>
+                  </div>
+                  <p className="text-[11px] text-[var(--muted)]">
+                    Dirección: {componerDireccion(form) || "—"}
+                  </p>
+                </>
+              ) : (
+                <Campo label="Dirección">
+                  <input
+                    required
+                    value={form.direccion}
+                    onChange={(e) => setForm({ ...form, direccion: e.target.value })}
+                    className="input"
+                  />
+                </Campo>
+              )}
               {editId && (
                 <PuntosAcopioMap
-                  puntos={ubicacionEditando ? [{ id: editId, nombre: form.nombre, direccion: form.direccion, zona: form.zona || null, ...ubicacionEditando }] : []}
+                  puntos={ubicacionEditando ? [{ id: editId, nombre: form.nombre, direccion: editaPorPartes ? componerDireccion(form) : form.direccion, zona: form.zona || null, ...ubicacionEditando }] : []}
                   className="h-40"
                   zoom={14}
                   scrollWheelZoom={false}
@@ -417,10 +484,17 @@ export default function PuntosAcopioPage() {
                 />
                 Activo
               </label>
-              <p className="text-[11px] text-[var(--muted)]">
-                Dirección, municipio y estado pueden sobrescribirse en la próxima sincronización
-                con Notion.
-              </p>
+              {editId && editaPorPartes ? (
+                <p className="text-[11px] text-[var(--muted)]">
+                  Nombre, calle, números, municipio y estado también se actualizan en Notion. Si
+                  cambias la dirección, el punto se vuelve a ubicar en el mapa.
+                </p>
+              ) : editId && editaVinculado ? (
+                <p className="text-[11px] text-[var(--muted)]">
+                  Nombre, municipio y estado también se actualizan en Notion. La dirección puede
+                  sobrescribirse en la próxima sincronización con Notion.
+                </p>
+              ) : null}
               <button
                 type="submit"
                 disabled={guardando}

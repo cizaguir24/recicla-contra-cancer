@@ -14,14 +14,15 @@ import {
   type NotionPage,
 } from "@/lib/notion";
 import { geocodificarDireccion, esperar } from "@/lib/geocode";
+import { detectarHuerfanos } from "@/lib/notion-huerfanos";
+import {
+  esPlaceholder,
+  componerDireccion,
+  direccionParaGeocodificar,
+} from "@/lib/direccion-compuesta";
 
 const ACOPIOS_2026_DATA_SOURCE_ID = "2dcbc6f4-11db-81d0-8cb2-000bb99aafb0";
 const UBICACIONES_DATA_SOURCE_ID = "f6e38491-8e9b-4008-9386-4201289ad652";
-
-// "N/A" es el placeholder que se usa en Notion cuando el campo no aplica.
-function esPlaceholder(v: string) {
-  return !v || v.trim().toUpperCase() === "N/A";
-}
 
 // Una fecha "tiene captura" cuando al menos un material llegó con kg > 0.
 function tieneKgCapturados(datos: {
@@ -47,17 +48,16 @@ function datosPuntoDesdeNotion(ubicacionPage: NotionPage) {
   const calle = getRichText(ubicacionPage, "Calle");
   const numeroExterior = getRichText(ubicacionPage, "Numero Exterior ");
   const numeroInterior = getRichText(ubicacionPage, "Numero Interior");
-  const direccion = [
-    !esPlaceholder(calle) ? calle : null,
-    !esPlaceholder(numeroExterior) ? `#${numeroExterior}` : null,
-    !esPlaceholder(numeroInterior) ? `Int. ${numeroInterior}` : null,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  const direccion = componerDireccion({ calle, numeroExterior, numeroInterior });
 
   return {
     nombre,
     direccion,
+    // Las tres partes se guardan aparte (sin los "N/A") para poder editarlas
+    // por separado en la app; `direccion` sigue siendo la cadena compuesta.
+    calle: esPlaceholder(calle) ? null : calle,
+    numeroExterior: esPlaceholder(numeroExterior) ? null : numeroExterior,
+    numeroInterior: esPlaceholder(numeroInterior) ? null : numeroInterior,
     zona: municipio,
     estado: estadoDireccion,
     tipoContenedor,
@@ -72,7 +72,7 @@ function direccionCompletaParaGeocodificar(datos: {
   zona: string | null;
   estado: string | null;
 }) {
-  return [datos.direccion, datos.zona, datos.estado].filter(Boolean).join(", ");
+  return direccionParaGeocodificar(datos);
 }
 
 export async function sincronizarNotion() {
@@ -230,6 +230,22 @@ export async function sincronizarNotion() {
     }
   }
 
+  // Puntos activos vinculados a una página de Notion que ya no existe allá
+  // (la borraron o movieron). Solo se reportan; no se modifica nada. Si la
+  // consulta falla, el resto del resultado del sync se entrega igual.
+  let huerfanos: { id: string; nombre: string }[] = [];
+  try {
+    const vinculados = await prisma.puntoAcopio.findMany({
+      where: { notionPageId: { not: null } },
+      select: { id: true, nombre: true, notionPageId: true, activo: true },
+    });
+    huerfanos = detectarHuerfanos(vinculados, new Set(ubicaciones.map((u) => u.id))).map(
+      ({ id, nombre }) => ({ id, nombre }),
+    );
+  } catch (err) {
+    console.error("No se pudieron detectar puntos huérfanos:", err);
+  }
+
   return {
     creados,
     actualizados,
@@ -239,5 +255,6 @@ export async function sincronizarNotion() {
     puntosActualizados,
     puntosTotal: ubicaciones.length,
     puntosGeocodificados,
+    huerfanos,
   };
 }

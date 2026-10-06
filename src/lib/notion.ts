@@ -95,6 +95,25 @@ export async function setSelectProperty(
   }
 }
 
+// Escribe varias propiedades de una página en una sola petición. La usa el
+// espejo de campos de Puntos de Acopio hacia Notion (nombre, municipio,
+// estado, celular, correo, tipo de contenedor, decisión de reubicación): el
+// llamador solo manda lo que realmente cambió. La app siempre gana.
+export async function actualizarPropiedadesNotion(
+  pageId: string,
+  properties: Record<string, unknown>,
+): Promise<void> {
+  const res = await fetch(`${NOTION_API_BASE}/pages/${pageId}`, {
+    method: "PATCH",
+    headers: notionHeaders(),
+    body: JSON.stringify({ properties }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Notion updatePage falló (${res.status}): ${await res.text()}`);
+  }
+}
+
 export function getTitleText(page: NotionPage, propName: string): string {
   const prop = page.properties[propName];
   if (!prop || prop.type !== "title") return "";

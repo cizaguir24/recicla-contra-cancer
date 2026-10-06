@@ -59,6 +59,7 @@ export default function ReportePuntosAcopioPage() {
   const [cargando, setCargando] = useState(true);
   const [sincronizando, setSincronizando] = useState(false);
   const [resultadoSync, setResultadoSync] = useState<string | null>(null);
+  const [huerfanosSync, setHuerfanosSync] = useState<string[]>([]);
 
   const [filtroPunto, setFiltroPunto] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("");
@@ -83,14 +84,18 @@ export default function ReportePuntosAcopioPage() {
   async function sincronizarConNotion() {
     setSincronizando(true);
     setResultadoSync(null);
+    setHuerfanosSync([]);
     try {
       const res = await fetch("/api/sync/notion-acopios", { method: "POST" });
       if (!res.ok) throw new Error(await res.text());
-      const { creados, actualizados, fusionados, total } = await res.json();
+      const { creados, actualizados, fusionados, total, huerfanos } = await res.json();
       setResultadoSync(
         `${creados} nuevos, ${actualizados} actualizados` +
           (fusionados ? `, ${fusionados} fusionados con fechas manuales` : "") +
           ` (de ${total} páginas de Notion revisadas)`,
+      );
+      setHuerfanosSync(
+        Array.isArray(huerfanos) ? huerfanos.map((h: { nombre: string }) => h.nombre) : [],
       );
       await cargar();
     } catch {
@@ -137,6 +142,21 @@ export default function ReportePuntosAcopioPage() {
           </button>
         </div>
       </div>
+
+      {huerfanosSync.length > 0 && (
+        <div className="rounded-xl border border-amber-300/60 bg-amber-50/70 p-3 text-sm text-amber-800">
+          <p className="font-medium">
+            {huerfanosSync.length === 1
+              ? "1 punto activo ya no existe en Notion:"
+              : `${huerfanosSync.length} puntos activos ya no existen en Notion:`}
+          </p>
+          <p>{huerfanosSync.join(", ")}</p>
+          <p className="mt-1 text-xs text-amber-700">
+            No se modificó nada. Revísalo en Puntos de Acopio y, si ya no aplica, márcalo como
+            inactivo.
+          </p>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-3 rounded-xl border border-white/50 bg-white/40 backdrop-blur-md p-4 sm:grid-cols-4">
         <label className="space-y-1 text-sm">

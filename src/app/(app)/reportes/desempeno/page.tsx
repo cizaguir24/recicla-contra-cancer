@@ -211,7 +211,7 @@ export default function DesempenoPage() {
     }
 
     setGuardando(true);
-    await fetch(`/api/puntos-acopio/${editandoId}`, {
+    const res = await fetch(`/api/puntos-acopio/${editandoId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
@@ -219,6 +219,11 @@ export default function DesempenoPage() {
     setGuardando(false);
     cerrarEdicion();
     await cargar();
+    if (res.headers.get("X-Notion-Sync") === "error") {
+      alert(
+        "Se guardó en la app, pero no se pudo reflejar en Notion. El próximo \"Sincronizar con Notion\" podría revertir ese cambio.",
+      );
+    }
   }
 
   async function confirmarYReubicar() {

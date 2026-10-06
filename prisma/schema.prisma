@@ -52,6 +52,9 @@ model PuntoAcopio {
   correoElectronico String?  // "Correo electrónico" de Notion
   estado       String?       // "Estado" de Notion (dirección)
   googleMapsUrl String?      // enlace de Google Maps capturado a mano (complementa lat/lng geocodificados)
+  calle         String?      // "Calle" de Notion; junto con los dos números arma `direccion` (ver lib/direccion-compuesta.ts)
+  numeroExterior String?     // "Numero Exterior " de Notion
+  numeroInterior String?     // "Numero Interior" de Notion
   lat          Float?        // geocodificado desde dirección/zona/estado (OpenStreetMap Nominatim)
   lng          Float?
   geocodificadoDireccion String? // dirección exacta con la que se geocodificó, para saber si hay que repetir
