@@ -11,6 +11,8 @@ import {
   getRelationIds,
   getPhoneNumber,
   getEmail,
+  getUrl,
+  getMultiSelectNames,
   type NotionPage,
 } from "@/lib/notion";
 import { geocodificarDireccion, esperar } from "@/lib/geocode";
@@ -20,6 +22,7 @@ import {
   componerDireccion,
   direccionParaGeocodificar,
 } from "@/lib/direccion-compuesta";
+import { materialesCanonicos, materialesATexto, mismosMateriales } from "@/lib/materiales";
 
 const ACOPIOS_2026_DATA_SOURCE_ID = "2dcbc6f4-11db-81d0-8cb2-000bb99aafb0";
 const UBICACIONES_DATA_SOURCE_ID = "f6e38491-8e9b-4008-9386-4201289ad652";
@@ -36,7 +39,15 @@ function tieneKgCapturados(datos: {
   );
 }
 
-function datosPuntoDesdeNotion(ubicacionPage: NotionPage) {
+// Materiales aceptados según Notion (texto canónico), o null si Notion no trae
+// ninguno reconocido. Notion vacío NUNCA borra lo que ya tiene la app: los
+// puntos nuevos del formulario llegan sin materiales y conservan el valor por defecto.
+export function materialesDesdeNotion(ubicacionPage: NotionPage): string | null {
+  const lista = materialesCanonicos(getMultiSelectNames(ubicacionPage, "Materiales aceptados"));
+  return lista.length > 0 ? materialesATexto(lista) : null;
+}
+
+export function datosPuntoDesdeNotion(ubicacionPage: NotionPage) {
   const nombre =
     getTitleText(ubicacionPage, "Empresa, institución, otro") || "Sin nombre (Notion)";
   const municipio = getRichText(ubicacionPage, "Municipio") || null;
@@ -49,6 +60,8 @@ function datosPuntoDesdeNotion(ubicacionPage: NotionPage) {
   const numeroExterior = getRichText(ubicacionPage, "Numero Exterior ");
   const numeroInterior = getRichText(ubicacionPage, "Numero Interior");
   const direccion = componerDireccion({ calle, numeroExterior, numeroInterior });
+  const contacto = getRichText(ubicacionPage, "Nombre de contacto").trim() || null;
+  const googleMapsUrl = getUrl(ubicacionPage, "URL Google Maps")?.trim() || null;
 
   return {
     nombre,
@@ -64,6 +77,9 @@ function datosPuntoDesdeNotion(ubicacionPage: NotionPage) {
     decisionReubicacion,
     numeroCelular,
     correoElectronico,
+    contacto,
+    // Igual que los materiales: una URL vacía en Notion no borra la de la app.
+    ...(googleMapsUrl ? { googleMapsUrl } : {}),
   };
 }
 
@@ -91,6 +107,13 @@ export async function sincronizarNotion() {
     const existente = await prisma.puntoAcopio.findUnique({
       where: { notionPageId: ubicacionPage.id },
     });
+
+    // Solo se pisa el texto de materiales si Notion trae otros distintos.
+    const materialesNotion = materialesDesdeNotion(ubicacionPage);
+    const datosMateriales =
+      materialesNotion && !mismosMateriales(existente?.materiales, materialesNotion)
+        ? { materiales: materialesNotion }
+        : {};
 
     // Solo se geocodifica cuando es nuevo o cuando la dirección cambió desde
     // la última vez, para no repetir llamadas innecesarias en cada sync.
@@ -123,10 +146,10 @@ export async function sincronizarNotion() {
       create: {
         ...datos,
         ...datosGeo,
-        materiales: "tapas, PET, aluminio",
+        materiales: materialesNotion ?? "tapas, PET, aluminio",
         notionPageId: ubicacionPage.id,
       },
-      update: { ...datos, ...datosGeo },
+      update: { ...datos, ...datosGeo, ...datosMateriales },
     });
 
     if (existente) puntosActualizados++;
@@ -156,10 +179,15 @@ export async function sincronizarNotion() {
       // seguridad se resuelve igual si el acopio referencia algo fuera de esa lista.
       const ubicacionPage = await getPage(ubicacionId);
       const datos = datosPuntoDesdeNotion(ubicacionPage);
+      const materialesNotion = materialesDesdeNotion(ubicacionPage);
       const punto = await prisma.puntoAcopio.upsert({
         where: { notionPageId: ubicacionId },
-        create: { ...datos, materiales: "tapas, PET, aluminio", notionPageId: ubicacionId },
-        update: datos,
+        create: {
+          ...datos,
+          materiales: materialesNotion ?? "tapas, PET, aluminio",
+          notionPageId: ubicacionId,
+        },
+        update: { ...datos, ...(materialesNotion ? { materiales: materialesNotion } : {}) },
       });
       puntoAcopioId = punto.id;
       puntoIdPorUbicacion.set(ubicacionId, puntoAcopioId);

@@ -170,3 +170,16 @@ export function getEmail(page: NotionPage, propName: string): string | null {
   if (!prop || prop.type !== "email") return null;
   return prop.email ?? null;
 }
+
+export function getUrl(page: NotionPage, propName: string): string | null {
+  const prop = page.properties[propName];
+  if (!prop || prop.type !== "url") return null;
+  return prop.url ?? null;
+}
+
+export function getMultiSelectNames(page: NotionPage, propName: string): string[] {
+  const prop = page.properties[propName];
+  if (!prop || prop.type !== "multi_select") return [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return prop.multi_select.map((o: any) => o.name);
+}

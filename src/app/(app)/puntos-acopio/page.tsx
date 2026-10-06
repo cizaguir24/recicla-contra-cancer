@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { MapPin, Phone, Pencil, Trash2, PackageSearch, FileText, X, Map as MapIcon } from "lucide-react";
+import { MapPin, User, Pencil, Trash2, PackageSearch, FileText, X, Map as MapIcon } from "lucide-react";
 import { usePermisos } from "@/lib/role-context";
 import SearchBar from "@/components/SearchBar";
 import { coincideBusqueda } from "@/lib/texto";
@@ -303,7 +303,7 @@ export default function PuntosAcopioPage() {
                   {p.responsable && <span>{p.responsable}</span>}
                   {p.contacto && (
                     <span className="flex items-center gap-1">
-                      <Phone className="h-3 w-3 shrink-0" /> {p.contacto}
+                      <User className="h-3 w-3 shrink-0" /> {p.contacto}
                     </span>
                   )}
                 </div>
@@ -486,13 +486,15 @@ export default function PuntosAcopioPage() {
               </label>
               {editId && editaPorPartes ? (
                 <p className="text-[11px] text-[var(--muted)]">
-                  Nombre, calle, números, municipio y estado también se actualizan en Notion. Si
-                  cambias la dirección, el punto se vuelve a ubicar en el mapa.
+                  Nombre, calle, números, municipio, estado, contacto, URL de Google Maps y
+                  materiales también se actualizan en Notion. Si cambias la dirección, el punto
+                  se vuelve a ubicar en el mapa.
                 </p>
               ) : editId && editaVinculado ? (
                 <p className="text-[11px] text-[var(--muted)]">
-                  Nombre, municipio y estado también se actualizan en Notion. La dirección puede
-                  sobrescribirse en la próxima sincronización con Notion.
+                  Nombre, municipio, estado, contacto, URL de Google Maps y materiales también se
+                  actualizan en Notion. La dirección puede sobrescribirse en la próxima
+                  sincronización con Notion.
                 </p>
               ) : null}
               <button
