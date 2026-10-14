@@ -34,24 +34,29 @@ function crearIcono(activo: boolean) {
   });
 }
 
-// Insignia de racimo propia (reemplaza el círculo amarillo por default del
-// plugin) para que combine con la paleta de la app. El anillo exterior más
-// claro alrededor del número es el mismo lenguaje visual que ya usan
-// Google Maps/Mapbox para "esto es un grupo de puntos, no un punto
-// suelto" — quitarlo (como en el primer intento, solo un círculo sólido)
-// deja la insignia sin pista de que se puede hacer clic para acercar y
-// separarlos, y el `title` le da además un texto explicativo al pasar el
-// mouse encima.
+// Racimo propio (reemplaza el círculo amarillo por default del plugin):
+// un círculo con un número adentro no significa nada para quien no esté
+// acostumbrado a mapas con clustering ("¿qué es ese 190?"). En vez de
+// eso, se reusa la MISMA silueta de pin que ya usan los puntos
+// individuales — así se lee de inmediato como "un marcador que
+// representa varios lugares", sin inventar un símbolo nuevo. El `title`
+// explica el resto al pasar el mouse encima.
 function crearIconoCluster(cluster: { getChildCount: () => number }) {
   const cantidad = cluster.getChildCount();
-  const texto = cantidad === 1 ? "1 punto de acopio aquí" : `${cantidad} puntos de acopio aquí`;
+  const texto = cantidad > 99 ? "99+" : String(cantidad);
+  const descripcion = cantidad === 1 ? "1 punto de acopio aquí" : `${cantidad} puntos de acopio aquí`;
   return L.divIcon({
     className: "recicla-cluster",
     html:
-      `<div class="recicla-cluster__ring" title="${texto} — clic para acercar y separarlos">` +
-      `<div class="recicla-cluster__badge">${cantidad}</div>` +
-      `</div>`,
-    iconSize: L.point(50, 50, true),
+      `<span class="recicla-cluster-pin" title="${descripcion} — clic para acercar y separarlos">` +
+      `<svg viewBox="0 0 24 32" width="44" height="58" xmlns="http://www.w3.org/2000/svg">` +
+      `<path d="M12 0C5.373 0 0 5.373 0 12c0 9 12 20 12 20s12-11 12-20C24 5.373 18.627 0 12 0z" fill="var(--brand-blue)"/>` +
+      `</svg>` +
+      `<span class="recicla-cluster-pin__count">${texto}</span>` +
+      `</span>`,
+    iconSize: [44, 58],
+    iconAnchor: [22, 58],
+    popupAnchor: [0, -52],
   });
 }
 
