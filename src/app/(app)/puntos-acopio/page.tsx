@@ -158,19 +158,7 @@ export default function PuntosAcopioPage() {
         </div>
       </div>
 
-      {mostrarMapa && (
-        <PuntosAcopioMap
-          puntos={puntosFiltrados}
-          onEditar={
-            esAdmin
-              ? (id) => {
-                  const punto = puntosFiltrados.find((p) => p.id === id);
-                  if (punto) abrirEdicion(punto);
-                }
-              : undefined
-          }
-        />
-      )}
+      {mostrarMapa && <PuntosAcopioMap puntos={puntosFiltrados} />}
 
       <SearchBar value={busqueda} onChange={setBusqueda} className="sm:max-w-md" />
 
