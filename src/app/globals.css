@@ -76,3 +76,55 @@ body {
     }
   }
 }
+
+/* ================= Mapa de Puntos de Acopio =================
+   Ver src/components/PuntosAcopioMap.tsx. Estas reglas apuntan a clases
+   de DOM que genera Leaflet/leaflet.markercluster directamente (no son
+   componentes React), así que viven aquí en vez de @layer components. */
+
+.recicla-marker__pin {
+  display: block;
+  filter: drop-shadow(0 2px 3px rgba(15, 23, 42, 0.35));
+}
+
+.recicla-cluster__ring {
+  display: flex;
+  height: 50px;
+  width: 50px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background-color: color-mix(in srgb, var(--brand-blue) 22%, transparent);
+  cursor: pointer;
+}
+
+.recicla-cluster__badge {
+  display: flex;
+  height: 36px;
+  width: 36px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background-color: var(--brand-blue);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow:
+    0 6px 16px -6px rgba(15, 23, 42, 0.4),
+    inset 0 0 0 2px rgba(255, 255, 255, 0.65);
+}
+
+.recicla-popup .leaflet-popup-content-wrapper {
+  background: var(--glass-surface-elevated);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--glass-radius);
+  box-shadow: var(--glass-shadow-sm), var(--glass-inner-highlight);
+}
+.recicla-popup .leaflet-popup-content {
+  margin: 10px 12px;
+}
+.recicla-popup .leaflet-popup-tip {
+  background: var(--glass-surface-elevated);
+}
