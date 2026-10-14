@@ -43,6 +43,7 @@ function datosPuntoDesdeNotion(ubicacionPage: NotionPage) {
   const decisionReubicacion = getSelectName(ubicacionPage, "Decisión de Reubicación");
   const numeroCelular = getPhoneNumber(ubicacionPage, "Numero Celular");
   const correoElectronico = getEmail(ubicacionPage, "Correo electrónico");
+  const visibilidad = getSelectName(ubicacionPage, "Ubicación pública o privada");
   const estadoDireccion = getRichText(ubicacionPage, "Estado") || null;
   const calle = getRichText(ubicacionPage, "Calle");
   const numeroExterior = getRichText(ubicacionPage, "Numero Exterior ");
@@ -64,6 +65,7 @@ function datosPuntoDesdeNotion(ubicacionPage: NotionPage) {
     decisionReubicacion,
     numeroCelular,
     correoElectronico,
+    visibilidad,
   };
 }
 

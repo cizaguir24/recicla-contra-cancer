@@ -49,6 +49,10 @@ model PuntoAcopio {
   decisionReubicacion String? // "Decisión de Reubicación" de Notion: Sin revisar/Mantener/Dar seguimiento/Reubicar
   numeroCelular String?      // "Numero Celular" de Notion
   correoElectronico String?  // "Correo electrónico" de Notion
+  // "Ubicación pública o privada" de Notion: "Pública"/"Privada". NULL se
+  // trata como pública (todo lo que ya existía antes de este campo sigue
+  // visible por default en el filtro del mapa).
+  visibilidad  String?
   estado       String?       // "Estado" de Notion (dirección)
   lat          Float?        // geocodificado desde dirección/zona/estado (OpenStreetMap Nominatim)
   lng          Float?
