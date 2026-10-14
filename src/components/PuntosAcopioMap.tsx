@@ -2,11 +2,11 @@
 
 // Versión "pro": agrupa marcadores cercanos (react-leaflet-cluster), usa
 // pines propios con color según activo/inactivo en vez del ícono azul
-// genérico de Leaflet, cambia a un set de teselas más limpio (Esri World
-// Street Map, sin llave de API — CARTO's basemaps.cartocdn.com dejó de
-// servir teselas anónimas sin llave, lo que se descubrió ya en
-// producción) y rediseña el popup al estilo de cristal mate de la app en
-// vez del cuadro blanco por default de Leaflet.
+// genérico de Leaflet, usa teselas en gris claro tipo "mapa minimalista"
+// (Esri World Light Gray, sin llave de API) en vez del estilo con relieve
+// y colores saturados de World Street Map, y rediseña el popup al estilo
+// de cristal mate de la app en vez del cuadro blanco por default de
+// Leaflet.
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
@@ -19,7 +19,7 @@ import { Pencil } from "lucide-react";
 // punto central, coloreado por CSS para que activo/inactivo se distinga
 // de un vistazo sin abrir el popup. Ya no depende de ningún PNG externo.
 function crearIcono(activo: boolean) {
-  const color = activo ? "#16a34a" : "var(--brand-red)";
+  const color = activo ? "#16a34a" : "var(--brand-blue)";
   return L.divIcon({
     className: "recicla-marker",
     html:
@@ -118,9 +118,18 @@ export default function PuntosAcopioMap({
     <div className={`isolate w-full overflow-hidden rounded-xl border border-white/60 ${className}`}>
       <MapContainer center={centro} zoom={zoom} scrollWheelZoom={scrollWheelZoom} className="h-full w-full">
         <TileLayer
-          attribution="Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, Esri Japan, METI, Esri China (Hong Kong), Esri (Thailand), TomTom"
-          url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
+          attribution="Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ"
+          url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}"
           maxZoom={19}
+          maxNativeZoom={16}
+        />
+        {/* Capa de referencia: calles y nombres de lugar por encima del
+            fondo gris — el servicio base solo trae el "lienzo", sin esto
+            el mapa se ve vacío salvo por los pines. */}
+        <TileLayer
+          url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}"
+          maxZoom={19}
+          maxNativeZoom={16}
         />
         <MarkerClusterGroup chunkedLoading maxClusterRadius={50} iconCreateFunction={crearIconoCluster}>
           {conUbicacion.map((p) => (
