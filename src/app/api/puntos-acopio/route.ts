@@ -21,6 +21,7 @@ export async function POST(request: NextRequest) {
       contacto: body.contacto || null,
       visibilidad: body.visibilidad || null,
       estado: body.estado || null,
+      googleMapsUrl: body.googleMapsUrl || null,
       activo: body.activo ?? true,
     },
   });

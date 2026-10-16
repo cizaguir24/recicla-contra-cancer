@@ -52,6 +52,68 @@ export async function getPage(pageId: string): Promise<NotionPage> {
   return res.json();
 }
 
+// Única escritura hacia Notion en todo el proyecto: refleja el Activo/Inactivo
+// de la app en la casilla "Activo (sistema)" de Ubicaciones. La app siempre
+// gana (no compara nada contra el valor actual en Notion antes de escribir).
+export async function setCheckboxProperty(
+  pageId: string,
+  propName: string,
+  checked: boolean,
+): Promise<void> {
+  const res = await fetch(`${NOTION_API_BASE}/pages/${pageId}`, {
+    method: "PATCH",
+    headers: notionHeaders(),
+    body: JSON.stringify({
+      properties: { [propName]: { checkbox: checked } },
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Notion updatePage falló (${res.status}): ${await res.text()}`);
+  }
+}
+
+// Segunda escritura hacia Notion (mismo patrón que setCheckboxProperty): usada
+// al reubicar un contenedor, para reflejar el nuevo "Tipo de contenedor" y
+// "Decisión de Reubicación" en origen y destino y que el próximo sync no los
+// pise con el valor viejo. La app siempre gana.
+export async function setSelectProperty(
+  pageId: string,
+  propName: string,
+  value: string | null,
+): Promise<void> {
+  const res = await fetch(`${NOTION_API_BASE}/pages/${pageId}`, {
+    method: "PATCH",
+    headers: notionHeaders(),
+    body: JSON.stringify({
+      properties: { [propName]: { select: value ? { name: value } : null } },
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Notion updatePage falló (${res.status}): ${await res.text()}`);
+  }
+}
+
+// Escribe varias propiedades de una página en una sola petición. La usa el
+// espejo de campos de Puntos de Acopio hacia Notion (nombre, municipio,
+// estado, celular, correo, tipo de contenedor, decisión de reubicación): el
+// llamador solo manda lo que realmente cambió. La app siempre gana.
+export async function actualizarPropiedadesNotion(
+  pageId: string,
+  properties: Record<string, unknown>,
+): Promise<void> {
+  const res = await fetch(`${NOTION_API_BASE}/pages/${pageId}`, {
+    method: "PATCH",
+    headers: notionHeaders(),
+    body: JSON.stringify({ properties }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Notion updatePage falló (${res.status}): ${await res.text()}`);
+  }
+}
+
 export function getTitleText(page: NotionPage, propName: string): string {
   const prop = page.properties[propName];
   if (!prop || prop.type !== "title") return "";
@@ -107,4 +169,17 @@ export function getEmail(page: NotionPage, propName: string): string | null {
   const prop = page.properties[propName];
   if (!prop || prop.type !== "email") return null;
   return prop.email ?? null;
+}
+
+export function getUrl(page: NotionPage, propName: string): string | null {
+  const prop = page.properties[propName];
+  if (!prop || prop.type !== "url") return null;
+  return prop.url ?? null;
+}
+
+export function getMultiSelectNames(page: NotionPage, propName: string): string[] {
+  const prop = page.properties[propName];
+  if (!prop || prop.type !== "multi_select") return [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return prop.multi_select.map((o: any) => o.name);
 }

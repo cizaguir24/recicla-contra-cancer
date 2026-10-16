@@ -14,6 +14,45 @@
   --brand-blue-light: #eaf1fe;
   --brand-amber: #f59e0b;
   --brand-red: #ef4444;
+
+  /* Tema "complices-light-glass-reference": tokens de superficie tipo cristal
+     mate (azul hielo). Solo capa de presentación — ningún componente cambia
+     de comportamiento por usar estos tokens, solo de apariencia. Rollback:
+     esta sección vive en la rama feature/complices-light-glass-reference,
+     no fusionada a main hasta su aprobación; revertir = no fusionar / hacer
+     git revert del merge commit, sin tocar datos ni lógica. */
+  --glass-surface: rgba(255, 255, 255, 0.55);
+  --glass-surface-elevated: rgba(255, 255, 255, 0.74);
+  --glass-surface-hover: rgba(255, 255, 255, 0.68);
+  --glass-border: rgba(100, 130, 170, 0.28);
+  --glass-blur: 16px;
+  --glass-radius-lg: 20px;
+  --glass-radius: 16px;
+  --glass-radius-sm: 12px;
+  --glass-shadow: 0 12px 32px -12px rgba(30, 64, 175, 0.22), 0 2px 8px -2px rgba(30, 64, 175, 0.08);
+  --glass-shadow-sm: 0 4px 14px -6px rgba(30, 64, 175, 0.16);
+  --glass-inner-highlight: inset 0 1px 0 0 rgba(255, 255, 255, 0.65);
+
+  --menu-surface: rgba(255, 255, 255, 0.62);
+  --menu-border: rgba(100, 130, 170, 0.22);
+  --menu-active-bg: rgba(219, 234, 254, 0.7);
+  --menu-active-bar: var(--brand-blue);
+  --menu-text: #1e2433;
+  --menu-text-muted: #64748b;
+
+  --text-primary: #1e2433;
+  --text-secondary: #64748b;
+}
+
+/* Cuando el sistema pide reducir transparencia, la superficie de cristal se
+   vuelve casi opaca sin cambiar radios, bordes ni estructura. */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --glass-surface: rgba(255, 255, 255, 0.94);
+    --glass-surface-elevated: rgba(255, 255, 255, 0.98);
+    --menu-surface: rgba(255, 255, 255, 0.96);
+    --glass-blur: 0px;
+  }
 }
 
 @theme inline {
@@ -74,5 +113,36 @@ body {
       background-position: center;
       background-repeat: no-repeat;
     }
+  }
+
+  /* Tarjeta de cristal mate (tema complices-light-glass-reference): superficie
+     translúcida + blur + borde claro + sombra exterior difusa + brillo
+     interior sutil, combinados — no es solo bajar la opacidad. */
+  .glass-card {
+    background: var(--glass-surface);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
+    border-radius: var(--glass-radius-lg);
+    box-shadow: var(--glass-shadow), var(--glass-inner-highlight);
+  }
+
+  .glass-card-elevated {
+    background: var(--glass-surface-elevated);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
+    border-radius: var(--glass-radius);
+    box-shadow: var(--glass-shadow-sm), var(--glass-inner-highlight);
+  }
+
+  /* Registro interior de una tarjeta (ej. una cita, un evento): radio menor,
+     sombra casi imperceptible, borde tenue relacionado al estado (por
+     defecto azul hielo neutro si no se especifica otro). */
+  .glass-row {
+    background: var(--glass-surface-hover);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--glass-radius-sm);
+    box-shadow: var(--glass-shadow-sm);
   }
 }
