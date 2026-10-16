@@ -14,6 +14,8 @@ import {
   Map as MapIcon,
   Globe,
   EyeOff,
+  Copy,
+  Check,
 } from "lucide-react";
 import { usePermisos } from "@/lib/role-context";
 import SearchBar from "@/components/SearchBar";
@@ -89,6 +91,7 @@ export default function PuntosAcopioPage() {
   const [filtroVisibilidad, setFiltroVisibilidad] = useState<"todos" | "publicas" | "privadas">("todos");
   const [filtroActivo, setFiltroActivo] = useState<"activos" | "inactivos" | "todos">("activos");
   const [mostrarMapa, setMostrarMapa] = useState(true);
+  const [linkCopiado, setLinkCopiado] = useState(false);
   const [ubicacionEditando, setUbicacionEditando] = useState<{
     lat: number | null;
     lng: number | null;
@@ -105,6 +108,14 @@ export default function PuntosAcopioPage() {
   useEffect(() => {
     cargarPuntos();
   }, [cargarPuntos]);
+
+  function copiarLinkPublico() {
+    const url = `${window.location.origin}/publico/puntos-acopio`;
+    navigator.clipboard.writeText(url).then(() => {
+      setLinkCopiado(true);
+      setTimeout(() => setLinkCopiado(false), 2000);
+    });
+  }
 
   function abrirNuevo() {
     setEditId(null);
@@ -271,6 +282,18 @@ export default function PuntosAcopioPage() {
         >
           <Globe className="h-3.5 w-3.5" /> Mapa público
         </Link>
+        <button
+          type="button"
+          onClick={copiarLinkPublico}
+          className="flex items-center gap-1.5 rounded-xl border border-[var(--border)] px-3 py-2 text-sm font-medium text-[var(--muted)] hover:bg-white/40"
+        >
+          {linkCopiado ? (
+            <Check className="h-3.5 w-3.5 text-green-600" />
+          ) : (
+            <Copy className="h-3.5 w-3.5" />
+          )}
+          {linkCopiado ? "Link copiado" : "Copiar link"}
+        </button>
         <Link
           href="/puntos-acopio/privados"
           className="flex items-center gap-1.5 rounded-xl border border-[var(--border)] px-3 py-2 text-sm font-medium text-[var(--muted)] hover:bg-white/40"
