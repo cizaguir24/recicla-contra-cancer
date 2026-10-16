@@ -5,12 +5,14 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
 // Los íconos por defecto de Leaflet apuntan a rutas que el bundler no
-// resuelve; se reemplazan por las imágenes servidas desde unpkg.
+// resuelve; se reemplazan por copias propias en /public/leaflet (antes
+// servidas desde unpkg.com — un bloqueador de anuncios o una red que
+// filtre esa CDN dejaba los pines como imagen rota para quien los viera).
 delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconRetinaUrl: "/leaflet/marker-icon-2x.png",
+  iconUrl: "/leaflet/marker-icon.png",
+  shadowUrl: "/leaflet/marker-shadow.png",
 });
 
 export type PuntoMapa = {
