@@ -64,6 +64,7 @@ export async function PATCH(request: NextRequest, { params }: Context) {
   if ("decisionReubicacion" in body) data.decisionReubicacion = body.decisionReubicacion || null;
   if ("numeroCelular" in body) data.numeroCelular = body.numeroCelular || null;
   if ("correoElectronico" in body) data.correoElectronico = body.correoElectronico || null;
+  if ("visibilidad" in body) data.visibilidad = body.visibilidad || null;
   if ("googleMapsUrl" in body) data.googleMapsUrl = body.googleMapsUrl || null;
 
   // Dirección por partes: solo para puntos que vienen de Notion y cuyas partes

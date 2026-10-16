@@ -55,6 +55,7 @@ export function datosPuntoDesdeNotion(ubicacionPage: NotionPage) {
   const decisionReubicacion = getSelectName(ubicacionPage, "Decisión de Reubicación");
   const numeroCelular = getPhoneNumber(ubicacionPage, "Numero Celular");
   const correoElectronico = getEmail(ubicacionPage, "Correo electrónico");
+  const visibilidad = getSelectName(ubicacionPage, "Ubicación pública o privada");
   const estadoDireccion = getRichText(ubicacionPage, "Estado") || null;
   const calle = getRichText(ubicacionPage, "Calle");
   const numeroExterior = getRichText(ubicacionPage, "Numero Exterior ");
@@ -77,6 +78,7 @@ export function datosPuntoDesdeNotion(ubicacionPage: NotionPage) {
     decisionReubicacion,
     numeroCelular,
     correoElectronico,
+    visibilidad,
     contacto,
     // Igual que los materiales: una URL vacía en Notion no borra la de la app.
     ...(googleMapsUrl ? { googleMapsUrl } : {}),

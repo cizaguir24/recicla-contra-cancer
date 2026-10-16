@@ -32,6 +32,8 @@ type PuntoAcopio = {
   materiales: string;
   responsable: string | null;
   contacto: string | null;
+  // "Pública"/"Privada" (de Notion); NULL se trata como pública.
+  visibilidad: string | null;
   googleMapsUrl: string | null;
   activo: boolean;
   lat: number | null;
@@ -49,6 +51,7 @@ const FORM_INICIAL = {
   materiales: "",
   responsable: "",
   contacto: "",
+  visibilidad: "Pública",
   googleMapsUrl: "",
   activo: true,
 };
@@ -72,6 +75,7 @@ export default function PuntosAcopioPage() {
   const [editaVinculado, setEditaVinculado] = useState(false);
   const [editaPorPartes, setEditaPorPartes] = useState(false);
   const [busqueda, setBusqueda] = useState("");
+  const [filtroVisibilidad, setFiltroVisibilidad] = useState<"todos" | "publicas" | "privadas">("todos");
   const [filtroActivo, setFiltroActivo] = useState<"activos" | "inactivos" | "todos">("activos");
   const [mostrarMapa, setMostrarMapa] = useState(true);
   const [ubicacionEditando, setUbicacionEditando] = useState<{
@@ -113,6 +117,7 @@ export default function PuntosAcopioPage() {
       materiales: punto.materiales,
       responsable: punto.responsable ?? "",
       contacto: punto.contacto ?? "",
+      visibilidad: punto.visibilidad ?? "Pública",
       googleMapsUrl: punto.googleMapsUrl ?? "",
       activo: punto.activo,
     });
@@ -188,9 +193,15 @@ export default function PuntosAcopioPage() {
       if (filtroActivo === "activos" && !p.activo) return false;
       if (filtroActivo === "inactivos" && p.activo) return false;
       if (busqueda && !coincideBusqueda(busqueda, p.nombre, p.zona, p.responsable)) return false;
+      // Sin "Privada" explícito en Notion/el formulario, el punto sigue
+      // siendo público — así no desaparece nada de lo que ya existía antes
+      // de este campo.
+      const esPrivada = p.visibilidad === "Privada";
+      if (filtroVisibilidad === "publicas" && esPrivada) return false;
+      if (filtroVisibilidad === "privadas" && !esPrivada) return false;
       return true;
     });
-  }, [puntos, busqueda, filtroActivo]);
+  }, [puntos, busqueda, filtroActivo, filtroVisibilidad]);
 
   return (
     <div className="space-y-6">
@@ -233,6 +244,15 @@ export default function PuntosAcopioPage() {
           <option value="inactivos">Inactivos</option>
           <option value="todos">Todos</option>
         </select>
+        <select
+          value={filtroVisibilidad}
+          onChange={(e) => setFiltroVisibilidad(e.target.value as typeof filtroVisibilidad)}
+          className="input !w-auto"
+        >
+          <option value="todos">Públicas y privadas</option>
+          <option value="publicas">Solo públicas</option>
+          <option value="privadas">Solo privadas</option>
+        </select>
       </div>
 
       {cargando ? (
@@ -251,6 +271,11 @@ export default function PuntosAcopioPage() {
                   >
                     {p.activo ? "Activo" : "Inactivo"}
                   </span>
+                  {p.visibilidad === "Privada" && (
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+                      Privada
+                    </span>
+                  )}
                   {esAdmin && (
                     <button
                       onClick={() => abrirEdicion(p)}
@@ -476,25 +501,37 @@ export default function PuntosAcopioPage() {
                   />
                 </Campo>
               </div>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={form.activo}
-                  onChange={(e) => setForm({ ...form, activo: e.target.checked })}
-                />
-                Activo
-              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <Campo label="Visibilidad">
+                  <select
+                    value={form.visibilidad}
+                    onChange={(e) => setForm({ ...form, visibilidad: e.target.value })}
+                    className="input"
+                  >
+                    <option value="Pública">Pública</option>
+                    <option value="Privada">Privada</option>
+                  </select>
+                </Campo>
+                <label className="flex items-center gap-2 self-end pb-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={form.activo}
+                    onChange={(e) => setForm({ ...form, activo: e.target.checked })}
+                  />
+                  Activo
+                </label>
+              </div>
               {editId && editaPorPartes ? (
                 <p className="text-[11px] text-[var(--muted)]">
-                  Nombre, calle, números, municipio, estado, contacto, URL de Google Maps y
-                  materiales también se actualizan en Notion. Si cambias la dirección, el punto
-                  se vuelve a ubicar en el mapa.
+                  Nombre, calle, números, municipio, estado, contacto, URL de Google Maps,
+                  materiales y visibilidad también se actualizan en Notion. Si cambias la
+                  dirección, el punto se vuelve a ubicar en el mapa.
                 </p>
               ) : editId && editaVinculado ? (
                 <p className="text-[11px] text-[var(--muted)]">
-                  Nombre, municipio, estado, contacto, URL de Google Maps y materiales también se
-                  actualizan en Notion. La dirección puede sobrescribirse en la próxima
-                  sincronización con Notion.
+                  Nombre, municipio, estado, contacto, URL de Google Maps, materiales y
+                  visibilidad también se actualizan en Notion. La dirección puede sobrescribirse
+                  en la próxima sincronización con Notion.
                 </p>
               ) : null}
               <button

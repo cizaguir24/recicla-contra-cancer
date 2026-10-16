@@ -19,6 +19,7 @@ export async function POST(request: NextRequest) {
       materiales: body.materiales,
       responsable: body.responsable || null,
       contacto: body.contacto || null,
+      visibilidad: body.visibilidad || null,
       estado: body.estado || null,
       googleMapsUrl: body.googleMapsUrl || null,
       activo: body.activo ?? true,

@@ -6,12 +6,18 @@ export default auth((req) => {
   const { pathname } = req.nextUrl;
   const isLoginPage = pathname.startsWith("/login");
   const isApiRoute = pathname.startsWith("/api");
+  // Buscador público de Puntos de Acopio (sin sesión, para compartirse por
+  // WhatsApp/redes) — de solo lectura; el filtro de qué punto se puede ver
+  // vive dentro de la propia ruta de API, nunca aquí (ver
+  // src/app/api/publico/puntos-acopio/route.ts).
+  const isPublicPage = pathname.startsWith("/publico");
+  const isPublicApiRoute = pathname.startsWith("/api/publico");
 
-  if (!isLoggedIn && isApiRoute) {
+  if (!isLoggedIn && isApiRoute && !isPublicApiRoute) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
   }
 
-  if (!isLoggedIn && !isLoginPage) {
+  if (!isLoggedIn && !isLoginPage && !isPublicPage && !isPublicApiRoute) {
     return NextResponse.redirect(new URL("/login", req.nextUrl));
   }
 

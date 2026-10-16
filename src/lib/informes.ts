@@ -38,50 +38,64 @@ function finDeMes(anio: number, mesIndex0: number): Date {
   return new Date(anio, mesIndex0 + 1, 0, 23, 59, 59, 999);
 }
 
-export function resolverRangoPeriodo(params: {
+// Un año puede resolver a más de un rango disjunto cuando se seleccionan varios
+// años a la vez (ej. 2025 y 2026 marcados): cada año aporta su propio rango, y se
+// combinan con OR en la consulta — así no se cuela el año de en medio si no fue
+// marcado (ej. 2024 y 2026 sin el 2025).
+export function resolverRangosPeriodo(params: {
   periodo: PeriodoTipo;
-  anio: number;
+  anios: number[]; // uno o más años marcados, ignorado en periodo="rango" salvo como fallback
   mes?: number; // 1-12, solo para periodo="mes"
   desde?: string; // "YYYY-MM-DD", solo para periodo="rango"
   hasta?: string;
-}): RangoFecha {
-  const { periodo, anio, mes, desde, hasta } = params;
-  switch (periodo) {
-    case "mes": {
-      const m = mes && mes >= 1 && mes <= 12 ? mes : new Date().getMonth() + 1;
-      return { desde: new Date(anio, m - 1, 1, 0, 0, 0, 0), hasta: finDeMes(anio, m - 1) };
+}): RangoFecha[] {
+  const { periodo, anios, mes, desde, hasta } = params;
+  if (periodo === "rango") {
+    if (desde && hasta) {
+      return [{ desde: new Date(`${desde}T00:00:00`), hasta: new Date(`${hasta}T23:59:59.999`) }];
     }
-    case "semestre1":
-      return { desde: new Date(anio, 0, 1, 0, 0, 0, 0), hasta: finDeMes(anio, 5) };
-    case "semestre2":
-      return { desde: new Date(anio, 6, 1, 0, 0, 0, 0), hasta: finDeMes(anio, 11) };
-    case "rango": {
-      if (desde && hasta) {
-        return {
-          desde: new Date(`${desde}T00:00:00`),
-          hasta: new Date(`${hasta}T23:59:59.999`),
-        };
-      }
-      // Sin rango completo capturado todavía: cae de vuelta al año completo.
-      return { desde: new Date(anio, 0, 1, 0, 0, 0, 0), hasta: finDeMes(anio, 11) };
-    }
-    case "anio":
-    default:
-      return { desde: new Date(anio, 0, 1, 0, 0, 0, 0), hasta: finDeMes(anio, 11) };
+    // Sin rango completo capturado todavía: cae de vuelta al año completo del primer año marcado.
+    const anio = anios[0] ?? new Date().getFullYear();
+    return [{ desde: new Date(anio, 0, 1, 0, 0, 0, 0), hasta: finDeMes(anio, 11) }];
   }
+  return anios
+    .map((anio) => {
+      switch (periodo) {
+        case "mes": {
+          const m = mes && mes >= 1 && mes <= 12 ? mes : new Date().getMonth() + 1;
+          return { desde: new Date(anio, m - 1, 1, 0, 0, 0, 0), hasta: finDeMes(anio, m - 1) };
+        }
+        case "semestre1":
+          return { desde: new Date(anio, 0, 1, 0, 0, 0, 0), hasta: finDeMes(anio, 5) };
+        case "semestre2":
+          return { desde: new Date(anio, 6, 1, 0, 0, 0, 0), hasta: finDeMes(anio, 11) };
+        case "anio":
+        default:
+          return { desde: new Date(anio, 0, 1, 0, 0, 0, 0), hasta: finDeMes(anio, 11) };
+      }
+    })
+    .sort((a, b) => a.desde.getTime() - b.desde.getTime());
 }
 
-// La gráfica mensual siempre da contexto de año completo (enero-diciembre), salvo
-// en un rango personalizado, donde no hay un único año al que anclarse.
-export function resolverRangoGrafico(
-  rangoPrincipal: RangoFecha,
+// La gráfica mensual siempre da contexto de año completo (enero-diciembre) de cada
+// año marcado, salvo en un rango personalizado, donde no hay años a los que anclarse.
+export function resolverRangosGrafico(
+  rangosPrincipales: RangoFecha[],
   periodo: PeriodoTipo,
-  anio: number,
-): RangoFecha & { modo: "anioFijo" | "rango" } {
+  anios: number[],
+): { rangos: RangoFecha[]; modo: "anioFijo" | "multiAnio" | "rango" } {
   if (periodo === "rango") {
-    return { ...rangoPrincipal, modo: "rango" };
+    return { rangos: rangosPrincipales, modo: "rango" };
   }
-  return { desde: new Date(anio, 0, 1, 0, 0, 0, 0), hasta: finDeMes(anio, 11), modo: "anioFijo" };
+  const rangos = anios
+    .map((anio) => ({ desde: new Date(anio, 0, 1, 0, 0, 0, 0), hasta: finDeMes(anio, 11) }))
+    .sort((a, b) => a.desde.getTime() - b.desde.getTime());
+  return { rangos, modo: anios.length === 1 ? "anioFijo" : "multiAnio" };
+}
+
+// Años marcados, formateados para mostrarse junto a un encabezado (ej. "2025, 2026").
+export function formatAnios(anios: number[]): string {
+  return [...anios].sort((a, b) => a - b).join(", ");
 }
 
 export type PuntoMensual = { anio: number; mes: number; clave: string; kg: number };
@@ -90,15 +104,20 @@ function claveMes(fecha: Date): string {
   return `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, "0")}`;
 }
 
-// Pre-siembra cada mes del rango con kg:0 para que la gráfica no tenga huecos.
-export function agruparPorMes(filas: { fecha: Date; kg: number }[], desde: Date, hasta: Date): PuntoMensual[] {
+// Pre-siembra cada mes de cada rango con kg:0 para que la gráfica no tenga huecos
+// (varios rangos disjuntos = varios años marcados; no se rellenan los años de en
+// medio que no fueron marcados).
+export function agruparPorMes(filas: { fecha: Date; kg: number }[], rangos: RangoFecha[]): PuntoMensual[] {
   const puntos: PuntoMensual[] = [];
-  const cursor = new Date(desde.getFullYear(), desde.getMonth(), 1);
-  const fin = new Date(hasta.getFullYear(), hasta.getMonth(), 1);
-  while (cursor <= fin) {
-    puntos.push({ anio: cursor.getFullYear(), mes: cursor.getMonth() + 1, clave: claveMes(cursor), kg: 0 });
-    cursor.setMonth(cursor.getMonth() + 1);
+  for (const { desde, hasta } of rangos) {
+    const cursor = new Date(desde.getFullYear(), desde.getMonth(), 1);
+    const fin = new Date(hasta.getFullYear(), hasta.getMonth(), 1);
+    while (cursor <= fin) {
+      puntos.push({ anio: cursor.getFullYear(), mes: cursor.getMonth() + 1, clave: claveMes(cursor), kg: 0 });
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
   }
+  puntos.sort((a, b) => a.clave.localeCompare(b.clave));
   const porClave = new Map(puntos.map((p) => [p.clave, p]));
   for (const f of filas) {
     const punto = porClave.get(claveMes(f.fecha));
@@ -134,6 +153,11 @@ export function mesesEnRango(desde: Date, hasta: Date): number {
   return Math.max(meses, 1);
 }
 
+// Suma de meses de varios rangos disjuntos (uno por año marcado).
+export function mesesEnRangos(rangos: RangoFecha[]): number {
+  return rangos.reduce((suma, r) => suma + mesesEnRango(r.desde, r.hasta), 0);
+}
+
 export function porcentaje(parte: number, total: number): number {
   return total > 0 ? (parte / total) * 100 : 0;
 }
@@ -157,7 +181,7 @@ export type FilaCentroInforme = {
 };
 
 export type InformesResponse = {
-  periodo: { tipo: PeriodoTipo; anio: number; mes: number | null; desde: string; hasta: string };
+  periodo: { tipo: PeriodoTipo; anios: number[]; mes: number | null; desde: string; hasta: string };
   indicadores: {
     totalKg: number;
     totalCentrosReportaron: number;
@@ -167,7 +191,7 @@ export type InformesResponse = {
     centroMayorDesempeno: { id: string; nombre: string; kg: number } | null;
     mesMayorRecoleccion: { anio: number; mes: number; kg: number } | null;
   };
-  graficoMensual: { modo: "anioFijo" | "rango"; puntos: PuntoMensual[] };
+  graficoMensual: { modo: "anioFijo" | "multiAnio" | "rango"; puntos: PuntoMensual[] };
   materiales: { key: MaterialKey; nombre: string; kg: number; porcentaje: number }[];
   centros: FilaCentroInforme[];
   manifiestosDirigidos: { nombre: string; puesto: string }[];
