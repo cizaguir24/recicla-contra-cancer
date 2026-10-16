@@ -40,11 +40,13 @@ export default function AppShell({
   userLabel,
   permisos,
   signOutAction,
+  appVersion,
   children,
 }: {
   userLabel: string;
   permisos: Permisos;
   signOutAction: () => Promise<void>;
+  appVersion?: string;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -120,6 +122,7 @@ export default function AppShell({
         <SidebarContent pathname={pathname} collapsed={collapsed} nav={nav} />
         <div className="mt-auto pt-3">
           <UserFooter userLabel={userLabel} signOutAction={signOutAction} collapsed={collapsed} />
+          {appVersion && !collapsed && <VersionLabel version={appVersion} />}
         </div>
       </aside>
 
@@ -142,6 +145,7 @@ export default function AppShell({
             <SidebarContent pathname={pathname} onNavigate={() => setOpen(false)} nav={nav} />
             <div className="mt-auto pt-3">
               <UserFooter userLabel={userLabel} signOutAction={signOutAction} />
+              {appVersion && <VersionLabel version={appVersion} />}
             </div>
           </aside>
         </div>
@@ -204,6 +208,12 @@ function SidebarContent({
         );
       })}
     </nav>
+  );
+}
+
+function VersionLabel({ version }: { version: string }) {
+  return (
+    <p className="mt-2 text-center text-[10px] text-[var(--menu-text-muted)]">v{version}</p>
   );
 }
 
