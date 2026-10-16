@@ -3,7 +3,18 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { MapPin, User, Pencil, Trash2, PackageSearch, FileText, X, Map as MapIcon } from "lucide-react";
+import {
+  MapPin,
+  User,
+  Pencil,
+  Trash2,
+  PackageSearch,
+  FileText,
+  X,
+  Map as MapIcon,
+  Globe,
+  EyeOff,
+} from "lucide-react";
 import { usePermisos } from "@/lib/role-context";
 import SearchBar from "@/components/SearchBar";
 import { coincideBusqueda } from "@/lib/texto";
@@ -253,6 +264,19 @@ export default function PuntosAcopioPage() {
           <option value="publicas">Solo públicas</option>
           <option value="privadas">Solo privadas</option>
         </select>
+        <Link
+          href="/publico/puntos-acopio"
+          target="_blank"
+          className="flex items-center gap-1.5 rounded-xl border border-[var(--border)] px-3 py-2 text-sm font-medium text-[var(--muted)] hover:bg-white/40"
+        >
+          <Globe className="h-3.5 w-3.5" /> Mapa público
+        </Link>
+        <Link
+          href="/puntos-acopio/privados"
+          className="flex items-center gap-1.5 rounded-xl border border-[var(--border)] px-3 py-2 text-sm font-medium text-[var(--muted)] hover:bg-white/40"
+        >
+          <EyeOff className="h-3.5 w-3.5" /> Mapa privados
+        </Link>
       </div>
 
       {cargando ? (
