@@ -22,6 +22,7 @@ export type CamposEspejo = {
   contacto: string | null;
   googleMapsUrl: string | null;
   materiales: string;
+  visibilidad: string | null;
 };
 
 type Tipo = "title" | "rich_text" | "phone_number" | "email" | "select" | "url" | "multi_select";
@@ -41,6 +42,7 @@ const MAPEO: { campo: keyof CamposEspejo; propiedad: string; tipo: Tipo }[] = [
   { campo: "contacto", propiedad: "Nombre de contacto", tipo: "rich_text" },
   { campo: "googleMapsUrl", propiedad: "URL Google Maps", tipo: "url" },
   { campo: "materiales", propiedad: "Materiales aceptados", tipo: "multi_select" },
+  { campo: "visibilidad", propiedad: "Ubicación pública o privada", tipo: "select" },
 ];
 
 const vacioANull = (v: string | null | undefined) => (v == null || v === "" ? null : v);
