@@ -7,8 +7,8 @@ import SearchBar from "@/components/SearchBar";
 import { coincideBusqueda } from "@/lib/texto";
 import { descargarCSV } from "@/lib/csv";
 
-type EstadoDesempeno = "VERDE" | "AMARILLO" | "ROJO" | "EN_SEGUIMIENTO_INICIAL" | "DATOS_INCOMPLETOS";
-type ColorEstado = "green" | "amber" | "red" | "sky" | "gray";
+type EstadoDesempeno = "VERDE" | "AMARILLO" | "ROJO";
+type ColorEstado = "green" | "amber" | "red";
 
 const OPCIONES_TIPO_CONTENEDOR = [
   "Centro de Acopio",
@@ -21,16 +21,15 @@ const OPCIONES_TIPO_CONTENEDOR = [
 
 const OPCIONES_DECISION_REUBICACION = ["Sin revisar", "Mantener", "Dar seguimiento", "Reubicar"];
 
-// Meta de 6 recolecciones anuales — ventana móvil de los últimos 12 meses
-// calendario (ver src/lib/desempeno-data.ts, misma lógica en el servidor).
+// Meta anual de referencia (6 recolecciones) — el estado real se evalúa
+// contra una meta prorrateada por mes del año en curso, no este valor fijo
+// (ver src/lib/desempeno-data.ts, misma lógica en el servidor).
 const META_ANUAL = 6;
 
 const ESTADO_INFO: Record<EstadoDesempeno, { etiqueta: string; color: ColorEstado }> = {
   VERDE: { etiqueta: "Verde", color: "green" },
   AMARILLO: { etiqueta: "Amarillo", color: "amber" },
   ROJO: { etiqueta: "Rojo", color: "red" },
-  EN_SEGUIMIENTO_INICIAL: { etiqueta: "En seguimiento inicial", color: "sky" },
-  DATOS_INCOMPLETOS: { etiqueta: "Datos incompletos", color: "gray" },
 };
 
 type FilaDesempeno = {
@@ -43,15 +42,15 @@ type FilaDesempeno = {
   numeroCelular: string | null;
   correoElectronico: string | null;
 
-  periodoInicio: string | null;
-  periodoFin: string | null;
+  periodoInicio: string;
+  periodoFin: string;
   totalRecolecciones: number;
   metaAnual: number;
+  metaPeriodo: number;
   estado: EstadoDesempeno;
-  cumplimientoAnual: number | null;
+  cumplimientoPeriodo: number | null;
 
-  fechaAlta: string | null;
-  mesesActivos: number | null;
+  primeraRecoleccionRegistrada: string | null;
 
   ultimaRecoleccion: string | null;
   diasSinRecoleccion: number | null;
@@ -68,24 +67,18 @@ const DOT_CLASES: Record<ColorEstado, string> = {
   green: "bg-green-500",
   amber: "bg-amber-500",
   red: "bg-red-500",
-  sky: "bg-sky-500",
-  gray: "bg-gray-400",
 };
 
 const BADGE_CLASES: Record<ColorEstado, string> = {
   green: "bg-green-100 text-green-700",
   amber: "bg-amber-100 text-amber-700",
   red: "bg-red-100 text-red-700",
-  sky: "bg-sky-100 text-sky-700",
-  gray: "bg-gray-100 text-gray-600",
 };
 
 const TEXTO_CLASES: Record<ColorEstado, string> = {
   green: "text-green-600",
   amber: "text-amber-600",
   red: "text-red-600",
-  sky: "text-sky-600",
-  gray: "text-gray-500",
 };
 
 function Punto({ color }: { color: ColorEstado }) {
@@ -108,11 +101,11 @@ function exportarCSV(filas: FilaDesempeno[]) {
       "Municipio",
       "Tipo de contenedor",
       "Estado",
-      "Recolecciones (12 meses)",
+      "Recolecciones (año en curso)",
+      "Meta a la fecha",
       "Meta anual",
-      "Cumplimiento anual",
-      "Fecha de alta",
-      "Meses activos",
+      "Cumplimiento",
+      "Primera recolección registrada",
       "Última recolección",
       "Días sin recolección",
       "Requiere contacto",
@@ -127,10 +120,10 @@ function exportarCSV(filas: FilaDesempeno[]) {
       f.tipoContenedor ?? "",
       ESTADO_INFO[f.estado].etiqueta,
       f.totalRecolecciones,
+      f.metaPeriodo,
       f.metaAnual,
-      f.cumplimientoAnual !== null ? `${f.cumplimientoAnual.toFixed(0)}%` : "",
-      fmtFecha(f.fechaAlta),
-      f.mesesActivos ?? "",
+      f.cumplimientoPeriodo !== null ? `${f.cumplimientoPeriodo.toFixed(0)}%` : "",
+      fmtFecha(f.primeraRecoleccionRegistrada),
       fmtFecha(f.ultimaRecoleccion),
       f.diasSinRecoleccion ?? "",
       f.alertaContacto ? "Sí" : "No",
@@ -364,13 +357,17 @@ export default function DesempenoPage() {
     return resultado;
   }, [filas, filtroContenedor, filtroEstado, soloConAlerta, busqueda]);
 
+  // La meta a la fecha es la misma para todos los puntos (depende del mes
+  // actual, no de cada punto) — se toma de cualquier fila ya cargada; antes
+  // de cargar, se estima con el mes del navegador solo para no mostrar un
+  // 0 en el instante inicial.
+  const metaPeriodoActual = filas[0]?.metaPeriodo ?? Math.floor((new Date().getMonth() + 1) / 2);
+
   const totales = useMemo<Totales>(
     () => ({
       VERDE: filtradas.filter((f) => f.estado === "VERDE").length,
       AMARILLO: filtradas.filter((f) => f.estado === "AMARILLO").length,
       ROJO: filtradas.filter((f) => f.estado === "ROJO").length,
-      EN_SEGUIMIENTO_INICIAL: filtradas.filter((f) => f.estado === "EN_SEGUIMIENTO_INICIAL").length,
-      DATOS_INCOMPLETOS: filtradas.filter((f) => f.estado === "DATOS_INCOMPLETOS").length,
       requierenContacto: filtradas.filter((f) => f.alertaContacto).length,
     }),
     [filtradas],
@@ -382,10 +379,11 @@ export default function DesempenoPage() {
         <div>
           <h1 className="text-xl font-semibold">Desempeño por Punto de Acopio</h1>
           <p className="flex flex-wrap items-center gap-1.5 text-sm text-foreground/60">
-            Estado anual según recolecciones realizadas en los últimos 12 meses (meta: {META_ANUAL}):
-            <Punto color="red" /> 0 a 3,
-            <Punto color="amber" /> 4 o 5,
-            <Punto color="green" /> 6 o más.
+            Recolecciones realizadas en lo que va del año (meta anual: {META_ANUAL}, ~1 cada 2 meses). Hoy
+            la meta a la fecha es {metaPeriodoActual}:
+            <Punto color="red" /> {Math.max(0, metaPeriodoActual - 3)} o menos,
+            <Punto color="amber" /> {Math.max(0, metaPeriodoActual - 2)} a {Math.max(0, metaPeriodoActual - 1)},
+            <Punto color="green" /> {metaPeriodoActual} o más.
           </p>
         </div>
         <button
@@ -443,7 +441,7 @@ export default function DesempenoPage() {
         </label>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {(Object.keys(ESTADO_INFO) as EstadoDesempeno[]).map((e) => (
           <div
             key={e}
@@ -505,51 +503,36 @@ export default function DesempenoPage() {
                 {f.tipoContenedor ? ` · ${f.tipoContenedor}` : ""}
               </p>
 
-              {f.estado === "DATOS_INCOMPLETOS" ? (
-                <div className="mb-3 rounded-lg bg-white/40 p-3 text-xs">
-                  <p className="text-[var(--muted)]">
-                    Sin ninguna Fecha de Acopio registrada — no se puede calcular antigüedad ni estado
-                    anual hasta que exista al menos una.
+              <div className="mb-3 grid grid-cols-2 gap-x-3 gap-y-2 rounded-lg bg-white/40 p-3 text-xs">
+                <div>
+                  <p className="text-[var(--muted)]">Recolecciones (año en curso)</p>
+                  <p className="font-medium text-[var(--foreground)]">
+                    {f.totalRecolecciones} / {f.metaPeriodo} meta a la fecha
                   </p>
                 </div>
-              ) : (
-                <div className="mb-3 grid grid-cols-2 gap-x-3 gap-y-2 rounded-lg bg-white/40 p-3 text-xs">
-                  <div>
-                    <p className="text-[var(--muted)]">
-                      {f.estado === "EN_SEGUIMIENTO_INICIAL" ? "Recolecciones desde el alta" : "Recolecciones (12 meses)"}
-                    </p>
-                    <p className="font-medium text-[var(--foreground)]">
-                      {f.totalRecolecciones} / {f.metaAnual} meta anual
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[var(--muted)]">
-                      {f.estado === "EN_SEGUIMIENTO_INICIAL" ? "Activo desde hace" : "Cumplimiento anual"}
-                    </p>
-                    <p className="font-medium text-[var(--foreground)]">
-                      {f.estado === "EN_SEGUIMIENTO_INICIAL"
-                        ? `${f.mesesActivos} mes${f.mesesActivos === 1 ? "" : "es"}`
-                        : `${f.cumplimientoAnual?.toFixed(0)}%`}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[var(--muted)]">Fecha de alta</p>
-                    <p className="font-medium text-[var(--foreground)]">{fmtFecha(f.fechaAlta)}</p>
-                  </div>
-                  <div>
-                    <p className="text-[var(--muted)]">Kgs Tapas (periodo)</p>
-                    <p className="font-medium text-[var(--foreground)]">{fmtKg(f.kgTapasPeriodo)}</p>
-                  </div>
-                  <div className="col-span-2">
-                    <p className="text-[var(--muted)]">Última recolección</p>
-                    <p className="font-medium text-[var(--foreground)]">
-                      {f.ultimaRecoleccion
-                        ? `${fmtFecha(f.ultimaRecoleccion)} · hace ${f.diasSinRecoleccion} día${f.diasSinRecoleccion === 1 ? "" : "s"}`
-                        : "Sin recolecciones"}
-                    </p>
-                  </div>
+                <div>
+                  <p className="text-[var(--muted)]">Cumplimiento a la fecha</p>
+                  <p className="font-medium text-[var(--foreground)]">
+                    {f.cumplimientoPeriodo !== null ? `${f.cumplimientoPeriodo.toFixed(0)}%` : "—"}
+                  </p>
                 </div>
-              )}
+                <div>
+                  <p className="text-[var(--muted)]">Primera recolección registrada</p>
+                  <p className="font-medium text-[var(--foreground)]">{fmtFecha(f.primeraRecoleccionRegistrada)}</p>
+                </div>
+                <div>
+                  <p className="text-[var(--muted)]">Kgs Tapas (periodo)</p>
+                  <p className="font-medium text-[var(--foreground)]">{fmtKg(f.kgTapasPeriodo)}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-[var(--muted)]">Última recolección</p>
+                  <p className="font-medium text-[var(--foreground)]">
+                    {f.ultimaRecoleccion
+                      ? `${fmtFecha(f.ultimaRecoleccion)} · hace ${f.diasSinRecoleccion} día${f.diasSinRecoleccion === 1 ? "" : "s"}`
+                      : "Sin recolecciones"}
+                  </p>
+                </div>
+              </div>
 
               {f.decisionReubicacion && (
                 <p className="mb-2 flex items-center gap-1 text-xs text-[var(--muted)]">

@@ -1,36 +1,38 @@
 import { prisma } from "@/lib/prisma";
 import { hoyMexico, sumarMeses, sumarDias, diferenciaDias } from "@/lib/fecha-calendario";
 
-// Indicador anual de Desempeño por Punto de Acopio (ver "Métricas RCC" —
-// instrucciones funcionales de Cómplices AC). Evalúa frecuencia de
-// recolección con una ventana móvil de los últimos 12 meses calendario,
-// meta de 6 recolecciones anuales; los kilogramos se muestran aparte y
-// nunca alimentan el semáforo.
+// Indicador de Desempeño por Punto de Acopio — año en curso (1 de enero al
+// día de hoy), meta prorrateada según el mes actual (~1 recolección cada 2
+// meses: mes 10 -> meta de 5). Se evalúa así, y no con una ventana móvil de
+// 12 meses contra la fecha de alta del punto, porque la única fecha
+// disponible para aproximar "antigüedad" (la Fecha de Acopio más antigua en
+// Notion) solo existe desde que se empezó a registrar este año — usarla
+// como antigüedad real hacía que CUALQUIER punto pareciera "nuevo" y nunca
+// recibiera semáforo. Con año en curso + meta pareja para todos, cada punto
+// siempre tiene un color.
 export const META_ANUAL = 6;
 
-export type EstadoDesempeno = "VERDE" | "AMARILLO" | "ROJO" | "EN_SEGUIMIENTO_INICIAL" | "DATOS_INCOMPLETOS";
+export type EstadoDesempeno = "VERDE" | "AMARILLO" | "ROJO";
 
-export type ColorEstado = "green" | "amber" | "red" | "sky" | "gray";
+export type ColorEstado = "green" | "amber" | "red";
 
 export const ESTADO_INFO: Record<EstadoDesempeno, { etiqueta: string; color: ColorEstado }> = {
   VERDE: { etiqueta: "Verde", color: "green" },
   AMARILLO: { etiqueta: "Amarillo", color: "amber" },
   ROJO: { etiqueta: "Rojo", color: "red" },
-  EN_SEGUIMIENTO_INICIAL: { etiqueta: "En seguimiento inicial", color: "sky" },
-  DATOS_INCOMPLETOS: { etiqueta: "Datos incompletos", color: "gray" },
 };
 
 export type EventoAcopio = { fecha: Date; estado: string; tapasKg: number | null };
 
 export type CalculoDesempeno = {
-  periodoInicio: Date | null;
-  periodoFin: Date | null;
+  periodoInicio: Date;
+  periodoFin: Date;
   totalRecolecciones: number;
   metaAnual: number;
+  metaPeriodo: number;
   estado: EstadoDesempeno;
-  cumplimientoAnual: number | null;
-  fechaAlta: Date | null;
-  mesesActivos: number | null;
+  cumplimientoPeriodo: number | null;
+  primeraRecoleccionRegistrada: Date | null;
   ultimaRecoleccion: Date | null;
   diasSinRecoleccion: number | null;
   alertaContacto: boolean;
@@ -48,60 +50,48 @@ export type FilaDesempeno = CalculoDesempeno & {
   correoElectronico: string | null;
 };
 
-function mesesEnteros(desde: Date, hasta: Date): number {
-  let meses = (hasta.getUTCFullYear() - desde.getUTCFullYear()) * 12 + (hasta.getUTCMonth() - desde.getUTCMonth());
-  if (hasta.getUTCDate() < desde.getUTCDate()) meses--;
-  return Math.max(0, meses);
+// Meta prorrateada: ~1 recolección cada 2 meses del año. Enero/febrero dan
+// meta 0/1 (apenas empieza el año, nadie puede estar "atrasado" todavía);
+// diciembre da meta 6, igual que la meta anual completa.
+function metaDelPeriodo(mesActual: number): number {
+  return Math.floor(mesActual / 2);
 }
 
 // Núcleo puro del indicador — sin Prisma, para poder probar a fondo los
-// casos límite del aniversario, fin de mes y año bisiesto con fechas
-// sintéticas (ver scripts/_test-desempeno-temp.ts). `eventos` son TODAS las
-// fechas de acopio del punto (cualquier estado), ya ordenadas por fecha.
+// casos límite con fechas sintéticas (ver scripts/_test-desempeno-temp.ts).
+// `eventos` son TODAS las fechas de acopio del punto (cualquier estado), ya
+// ordenadas por fecha.
 export function calcularDesempenoPunto(eventos: EventoAcopio[], hoy: Date): CalculoDesempeno {
   const realizadas = eventos.filter((e) => e.estado === "realizada");
 
-  // Fecha de alta: la "Fecha de Acopio" más antigua registrada para el
-  // punto (Registro Acopios 2026 en Notion), sin importar su estado —
-  // aprobado como proxy de antigüedad real ante la falta de una "Fecha de
-  // alta" propia en el modelo de datos. Sin ninguna fecha, no hay forma
-  // confiable de saber la antigüedad.
-  const fechaAlta = eventos.length > 0 ? eventos[0].fecha : null;
-
-  const inicioPeriodo = sumarMeses(hoy, -12);
+  const inicioPeriodo = new Date(Date.UTC(hoy.getUTCFullYear(), 0, 1)); // 1 de enero del año en curso
   const finPeriodo = sumarDias(hoy, 1); // exclusivo: hoy cuenta, mañana no
 
   const eventosPeriodo = realizadas.filter((e) => e.fecha >= inicioPeriodo && e.fecha < finPeriodo);
   const totalRecolecciones = eventosPeriodo.length;
 
-  const ultimaRecoleccion = realizadas.length > 0 ? realizadas[realizadas.length - 1].fecha : null;
+  const meta = metaDelPeriodo(hoy.getUTCMonth() + 1);
 
   let estado: EstadoDesempeno;
-  let cumplimientoAnual: number | null = null;
-  let mesesActivos: number | null = null;
-
-  if (!fechaAlta || fechaAlta > hoy) {
-    estado = "DATOS_INCOMPLETOS";
+  if (totalRecolecciones >= meta) {
+    estado = "VERDE";
+  } else if (totalRecolecciones >= meta - 2) {
+    estado = "AMARILLO";
   } else {
-    mesesActivos = mesesEnteros(fechaAlta, hoy);
-    if (hoy < sumarMeses(fechaAlta, 12)) {
-      estado = "EN_SEGUIMIENTO_INICIAL";
-    } else if (totalRecolecciones >= META_ANUAL) {
-      estado = "VERDE";
-      cumplimientoAnual = (totalRecolecciones / META_ANUAL) * 100;
-    } else if (totalRecolecciones >= 4) {
-      estado = "AMARILLO";
-      cumplimientoAnual = (totalRecolecciones / META_ANUAL) * 100;
-    } else {
-      estado = "ROJO";
-      cumplimientoAnual = (totalRecolecciones / META_ANUAL) * 100;
-    }
+    estado = "ROJO";
   }
+  const cumplimientoPeriodo = meta > 0 ? (totalRecolecciones / meta) * 100 : null;
 
-  // Alerta de inactividad: independiente del semáforo anual, basada en el
-  // historial COMPLETO (no el periodo de 12 meses) — puede coexistir con
+  const ultimaRecoleccion = realizadas.length > 0 ? realizadas[realizadas.length - 1].fecha : null;
+  // Primera fecha registrada para el punto (cualquier estado) — informativa,
+  // y respaldo de la alerta de inactividad si nunca tuvo una recolección
+  // realizada. No determina el estado anual (ver nota arriba).
+  const primeraRecoleccionRegistrada = eventos.length > 0 ? eventos[0].fecha : null;
+
+  // Alerta de inactividad: independiente del semáforo, basada en el
+  // historial COMPLETO (no solo el año en curso) — puede coexistir con
   // cualquier estado, incluido Verde.
-  const baseAlerta = ultimaRecoleccion ?? fechaAlta;
+  const baseAlerta = ultimaRecoleccion ?? primeraRecoleccionRegistrada;
   const alertaContacto = baseAlerta ? hoy > sumarMeses(baseAlerta, 2) : false;
 
   const hayDatoKgConfiable = eventosPeriodo.some((e) => e.tapasKg != null);
@@ -110,14 +100,14 @@ export function calcularDesempenoPunto(eventos: EventoAcopio[], hoy: Date): Calc
     : null;
 
   return {
-    periodoInicio: fechaAlta ? inicioPeriodo : null,
-    periodoFin: fechaAlta ? finPeriodo : null,
+    periodoInicio: inicioPeriodo,
+    periodoFin: finPeriodo,
     totalRecolecciones,
     metaAnual: META_ANUAL,
+    metaPeriodo: meta,
     estado,
-    cumplimientoAnual,
-    fechaAlta,
-    mesesActivos,
+    cumplimientoPeriodo,
+    primeraRecoleccionRegistrada,
     ultimaRecoleccion,
     diasSinRecoleccion: ultimaRecoleccion ? diferenciaDias(hoy, ultimaRecoleccion) : null,
     alertaContacto,
@@ -130,8 +120,8 @@ export async function obtenerDesempeno(): Promise<FilaDesempeno[]> {
 
   const puntos = await prisma.puntoAcopio.findMany({
     include: {
-      // Se necesita TODO el historial (no solo el periodo de 12 meses) para
-      // fecha de alta, última recolección y la alerta de inactividad.
+      // Se necesita TODO el historial (no solo el año en curso) para la
+      // última recolección y la alerta de inactividad.
       fechas: { orderBy: { fecha: "asc" } },
     },
     orderBy: { nombre: "asc" },
@@ -156,13 +146,7 @@ export async function obtenerDesempeno(): Promise<FilaDesempeno[]> {
     };
   });
 
-  const ordenEstado: Record<EstadoDesempeno, number> = {
-    ROJO: 0,
-    AMARILLO: 1,
-    DATOS_INCOMPLETOS: 2,
-    EN_SEGUIMIENTO_INICIAL: 3,
-    VERDE: 4,
-  };
+  const ordenEstado: Record<EstadoDesempeno, number> = { ROJO: 0, AMARILLO: 1, VERDE: 2 };
   filas.sort((a, b) => ordenEstado[a.estado] - ordenEstado[b.estado]);
 
   return filas;
