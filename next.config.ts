@@ -16,6 +16,20 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      {
+        // El buscador público pide la ubicación de quien lo abre (botón
+        // "Mi ubicación") para mostrar el centro de acopio más cercano.
+        // Una entrada posterior para la misma ruta pisa el valor de arriba
+        // (ver "Header Overriding Behavior" en la documentación de
+        // next.config.js) — el resto de la app sigue sin poder pedirla.
+        source: "/publico/:path*",
+        headers: [
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=(self)",
+          },
+        ],
+      },
     ];
   },
 };

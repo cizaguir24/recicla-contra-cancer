@@ -17,19 +17,26 @@ export async function geocodificarDireccion(direccion: string): Promise<Coordena
     countrycodes: "mx",
   });
 
-  const res = await fetch(`${NOMINATIM_URL}?${params}`, {
-    headers: { "User-Agent": USER_AGENT, Accept: "application/json" },
-  });
-  if (!res.ok) return null;
+  try {
+    const res = await fetch(`${NOMINATIM_URL}?${params}`, {
+      headers: { "User-Agent": USER_AGENT, Accept: "application/json" },
+    });
+    if (!res.ok) return null;
 
-  const data = await res.json();
-  if (!Array.isArray(data) || data.length === 0) return null;
+    const data = await res.json();
+    if (!Array.isArray(data) || data.length === 0) return null;
 
-  const lat = parseFloat(data[0].lat);
-  const lng = parseFloat(data[0].lon);
-  if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
+    const lat = parseFloat(data[0].lat);
+    const lng = parseFloat(data[0].lon);
+    if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
 
-  return { lat, lng };
+    return { lat, lng };
+  } catch (error) {
+    // Nominatim caído o sin red: se trata igual que "no encontrado" en vez
+    // de tumbar todo el sync (o la búsqueda pública) por un problema de red.
+    console.error("No se pudo geocodificar:", error);
+    return null;
+  }
 }
 
 export function esperar(ms: number): Promise<void> {
