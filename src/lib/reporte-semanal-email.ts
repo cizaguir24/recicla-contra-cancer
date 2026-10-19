@@ -32,7 +32,7 @@ function filaRojoHtml(f: FilaDesempeno) {
       <td style="padding:8px 10px;border-bottom:1px solid #e7e9ed;color:#6b7280;">${f.municipio ?? "—"}</td>
       <td style="padding:8px 10px;border-bottom:1px solid #e7e9ed;color:#6b7280;">${f.responsable ?? "—"}</td>
       <td style="padding:8px 10px;border-bottom:1px solid #e7e9ed;color:#6b7280;">${f.numeroCelular ?? "—"}</td>
-      <td style="padding:8px 10px;border-bottom:1px solid #e7e9ed;text-align:center;">${f.conteoVentanaMovil}</td>
+      <td style="padding:8px 10px;border-bottom:1px solid #e7e9ed;text-align:center;">${f.totalRecolecciones}</td>
       <td style="padding:8px 10px;border-bottom:1px solid #e7e9ed;color:#6b7280;">${fmtFecha(f.ultimaRecoleccion)}</td>
     </tr>`;
 }
@@ -53,7 +53,7 @@ function construirHtml(enRojo: FilaDesempeno[], inactivos: PuntoInactivo[]) {
   // Los más urgentes primero: menos recolecciones y, en empate, la más
   // antigua (o nunca recolectada) antes que la más reciente.
   const enRojoOrdenado = [...enRojo].sort((a, b) => {
-    if (a.conteoVentanaMovil !== b.conteoVentanaMovil) return a.conteoVentanaMovil - b.conteoVentanaMovil;
+    if (a.totalRecolecciones !== b.totalRecolecciones) return a.totalRecolecciones - b.totalRecolecciones;
     const ta = a.ultimaRecoleccion?.getTime() ?? 0;
     const tb = b.ultimaRecoleccion?.getTime() ?? 0;
     return ta - tb;
@@ -71,7 +71,7 @@ function construirHtml(enRojo: FilaDesempeno[], inactivos: PuntoInactivo[]) {
               <th style="padding:8px 10px;">Municipio</th>
               <th style="padding:8px 10px;">Responsable</th>
               <th style="padding:8px 10px;">Celular</th>
-              <th style="padding:8px 10px;text-align:center;">Recolecciones (6 meses)</th>
+              <th style="padding:8px 10px;text-align:center;">Recolecciones (12 meses)</th>
               <th style="padding:8px 10px;">Última recolección</th>
             </tr>
           </thead>
@@ -116,7 +116,7 @@ function construirHtml(enRojo: FilaDesempeno[], inactivos: PuntoInactivo[]) {
       </div>
 
       <h2 style="color:#2563eb;font-size:14px;margin:0 0 8px;">🔴 En rojo — pocas recolecciones (${enRojo.length})</h2>
-      <p style="color:#6b7280;font-size:12px;margin:0 0 10px;">2 o menos recolecciones realizadas en los últimos 6 meses.</p>
+      <p style="color:#6b7280;font-size:12px;margin:0 0 10px;">3 o menos recolecciones realizadas en los últimos 12 meses (meta anual: 6).</p>
       ${seccionRojo}
 
       <h2 style="color:#2563eb;font-size:14px;margin:24px 0 8px;">⚪ Puntos inactivos (${inactivos.length})</h2>

@@ -1,13 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { MapPin, Phone, Mail, PackageSearch, Pencil, X, Search } from "lucide-react";
+import { MapPin, Phone, Mail, PackageSearch, Pencil, X, Search, AlertTriangle } from "lucide-react";
 import { usePermisos } from "@/lib/role-context";
 import SearchBar from "@/components/SearchBar";
 import { coincideBusqueda } from "@/lib/texto";
 import { descargarCSV } from "@/lib/csv";
 
-type ColorSemaforo = "pink" | "amber" | "green";
+type EstadoDesempeno = "VERDE" | "AMARILLO" | "ROJO" | "EN_SEGUIMIENTO_INICIAL" | "DATOS_INCOMPLETOS";
+type ColorEstado = "green" | "amber" | "red" | "sky" | "gray";
 
 const OPCIONES_TIPO_CONTENEDOR = [
   "Centro de Acopio",
@@ -20,6 +21,18 @@ const OPCIONES_TIPO_CONTENEDOR = [
 
 const OPCIONES_DECISION_REUBICACION = ["Sin revisar", "Mantener", "Dar seguimiento", "Reubicar"];
 
+// Meta de 6 recolecciones anuales — ventana móvil de los últimos 12 meses
+// calendario (ver src/lib/desempeno-data.ts, misma lógica en el servidor).
+const META_ANUAL = 6;
+
+const ESTADO_INFO: Record<EstadoDesempeno, { etiqueta: string; color: ColorEstado }> = {
+  VERDE: { etiqueta: "Verde", color: "green" },
+  AMARILLO: { etiqueta: "Amarillo", color: "amber" },
+  ROJO: { etiqueta: "Rojo", color: "red" },
+  EN_SEGUIMIENTO_INICIAL: { etiqueta: "En seguimiento inicial", color: "sky" },
+  DATOS_INCOMPLETOS: { etiqueta: "Datos incompletos", color: "gray" },
+};
+
 type FilaDesempeno = {
   id: string;
   nombre: string;
@@ -29,32 +42,62 @@ type FilaDesempeno = {
   decisionReubicacion: string | null;
   numeroCelular: string | null;
   correoElectronico: string | null;
+
+  periodoInicio: string | null;
+  periodoFin: string | null;
   totalRecolecciones: number;
+  metaAnual: number;
+  estado: EstadoDesempeno;
+  cumplimientoAnual: number | null;
+
+  fechaAlta: string | null;
+  mesesActivos: number | null;
+
   ultimaRecoleccion: string | null;
-  kgsTapasTotal: number;
-  frecuencia: string;
-  semaforo: { color: ColorSemaforo; label: string };
-  conteoVentanaMovil: number;
+  diasSinRecoleccion: number | null;
+  alertaContacto: boolean;
+
+  kgTapasPeriodo: number | null;
 };
 
-type Totales = { rosa: number; amarillo: number; verde: number };
+type Totales = Record<EstadoDesempeno, number> & { requierenContacto: number };
 
 const SIN_CONTENEDOR = "__sin_contenedor__";
 
-const DOT_CLASES: Record<ColorSemaforo, string> = {
-  pink: "bg-pink-500",
-  amber: "bg-amber-500",
+const DOT_CLASES: Record<ColorEstado, string> = {
   green: "bg-green-500",
+  amber: "bg-amber-500",
+  red: "bg-red-500",
+  sky: "bg-sky-500",
+  gray: "bg-gray-400",
 };
 
-const BADGE_CLASES: Record<ColorSemaforo, string> = {
-  pink: "bg-pink-100 text-pink-700",
-  amber: "bg-amber-100 text-amber-700",
+const BADGE_CLASES: Record<ColorEstado, string> = {
   green: "bg-green-100 text-green-700",
+  amber: "bg-amber-100 text-amber-700",
+  red: "bg-red-100 text-red-700",
+  sky: "bg-sky-100 text-sky-700",
+  gray: "bg-gray-100 text-gray-600",
 };
 
-function Punto({ color }: { color: ColorSemaforo }) {
+const TEXTO_CLASES: Record<ColorEstado, string> = {
+  green: "text-green-600",
+  amber: "text-amber-600",
+  red: "text-red-600",
+  sky: "text-sky-600",
+  gray: "text-gray-500",
+};
+
+function Punto({ color }: { color: ColorEstado }) {
   return <span className={`inline-block h-2.5 w-2.5 rounded-full ${DOT_CLASES[color]}`} />;
+}
+
+function fmtFecha(iso: string | null) {
+  return iso ? iso.slice(0, 10) : "—";
+}
+
+function fmtKg(kg: number | null) {
+  return kg === null ? "Sin datos" : `${kg.toFixed(2)} kg`;
 }
 
 function exportarCSV(filas: FilaDesempeno[]) {
@@ -64,12 +107,16 @@ function exportarCSV(filas: FilaDesempeno[]) {
       "Punto de acopio",
       "Municipio",
       "Tipo de contenedor",
-      "Total recolecciones",
+      "Estado",
+      "Recolecciones (12 meses)",
+      "Meta anual",
+      "Cumplimiento anual",
+      "Fecha de alta",
+      "Meses activos",
       "Última recolección",
-      "Kgs Tapas total",
-      "Frecuencia",
-      "Recolecciones últimos 6 meses",
-      "Semáforo",
+      "Días sin recolección",
+      "Requiere contacto",
+      "Kgs Tapas (periodo)",
       "Decisión de Reubicación (Notion)",
       "Número Celular",
       "Correo electrónico",
@@ -78,12 +125,16 @@ function exportarCSV(filas: FilaDesempeno[]) {
       f.nombre,
       f.municipio ?? "",
       f.tipoContenedor ?? "",
+      ESTADO_INFO[f.estado].etiqueta,
       f.totalRecolecciones,
-      f.ultimaRecoleccion ? f.ultimaRecoleccion.slice(0, 10) : "",
-      f.kgsTapasTotal,
-      f.frecuencia,
-      f.conteoVentanaMovil,
-      f.semaforo.label,
+      f.metaAnual,
+      f.cumplimientoAnual !== null ? `${f.cumplimientoAnual.toFixed(0)}%` : "",
+      fmtFecha(f.fechaAlta),
+      f.mesesActivos ?? "",
+      fmtFecha(f.ultimaRecoleccion),
+      f.diasSinRecoleccion ?? "",
+      f.alertaContacto ? "Sí" : "No",
+      f.kgTapasPeriodo !== null ? f.kgTapasPeriodo.toFixed(2) : "",
       f.decisionReubicacion ?? "",
       f.numeroCelular ?? "",
       f.correoElectronico ?? "",
@@ -124,7 +175,8 @@ export default function DesempenoPage() {
   const [filas, setFilas] = useState<FilaDesempeno[]>([]);
   const [cargando, setCargando] = useState(true);
   const [filtroContenedor, setFiltroContenedor] = useState("");
-  const [filtroSemaforo, setFiltroSemaforo] = useState<"" | ColorSemaforo>("");
+  const [filtroEstado, setFiltroEstado] = useState<"" | EstadoDesempeno>("");
+  const [soloConAlerta, setSoloConAlerta] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [form, setForm] = useState(FORM_EDICION_VACIO);
@@ -298,8 +350,11 @@ export default function DesempenoPage() {
     } else if (filtroContenedor) {
       resultado = resultado.filter((f) => f.tipoContenedor === filtroContenedor);
     }
-    if (filtroSemaforo) {
-      resultado = resultado.filter((f) => f.semaforo.color === filtroSemaforo);
+    if (filtroEstado) {
+      resultado = resultado.filter((f) => f.estado === filtroEstado);
+    }
+    if (soloConAlerta) {
+      resultado = resultado.filter((f) => f.alertaContacto);
     }
     if (busqueda) {
       resultado = resultado.filter((f) =>
@@ -307,13 +362,16 @@ export default function DesempenoPage() {
       );
     }
     return resultado;
-  }, [filas, filtroContenedor, filtroSemaforo, busqueda]);
+  }, [filas, filtroContenedor, filtroEstado, soloConAlerta, busqueda]);
 
   const totales = useMemo<Totales>(
     () => ({
-      rosa: filtradas.filter((f) => f.semaforo.label === "Rosa").length,
-      amarillo: filtradas.filter((f) => f.semaforo.label === "Amarillo").length,
-      verde: filtradas.filter((f) => f.semaforo.label === "Verde").length,
+      VERDE: filtradas.filter((f) => f.estado === "VERDE").length,
+      AMARILLO: filtradas.filter((f) => f.estado === "AMARILLO").length,
+      ROJO: filtradas.filter((f) => f.estado === "ROJO").length,
+      EN_SEGUIMIENTO_INICIAL: filtradas.filter((f) => f.estado === "EN_SEGUIMIENTO_INICIAL").length,
+      DATOS_INCOMPLETOS: filtradas.filter((f) => f.estado === "DATOS_INCOMPLETOS").length,
+      requierenContacto: filtradas.filter((f) => f.alertaContacto).length,
     }),
     [filtradas],
   );
@@ -324,10 +382,10 @@ export default function DesempenoPage() {
         <div>
           <h1 className="text-xl font-semibold">Desempeño por Punto de Acopio</h1>
           <p className="flex flex-wrap items-center gap-1.5 text-sm text-foreground/60">
-            Semáforo según recolecciones en los últimos 6 meses (ventana móvil):
-            <Punto color="pink" /> 2 o menos,
-            <Punto color="amber" /> exactamente 3,
-            <Punto color="green" /> 4 o más.
+            Estado anual según recolecciones realizadas en los últimos 12 meses (meta: {META_ANUAL}):
+            <Punto color="red" /> 0 a 3,
+            <Punto color="amber" /> 4 o 5,
+            <Punto color="green" /> 6 o más.
           </p>
         </div>
         <button
@@ -360,41 +418,49 @@ export default function DesempenoPage() {
             {hayFilasSinContenedor && <option value={SIN_CONTENEDOR}>Sin contenedor</option>}
           </select>
         </label>
-        <label className="space-y-1 text-sm sm:w-48">
-          <span className="font-medium">Semáforo</span>
+        <label className="space-y-1 text-sm sm:w-56">
+          <span className="font-medium">Estado</span>
           <select
-            value={filtroSemaforo}
-            onChange={(e) => setFiltroSemaforo(e.target.value as "" | ColorSemaforo)}
+            value={filtroEstado}
+            onChange={(e) => setFiltroEstado(e.target.value as "" | EstadoDesempeno)}
             className="input"
           >
             <option value="">General (todos)</option>
-            <option value="pink">Puntos en rosa</option>
-            <option value="amber">Puntos en amarillo</option>
-            <option value="green">Puntos en verde</option>
+            {(Object.keys(ESTADO_INFO) as EstadoDesempeno[]).map((e) => (
+              <option key={e} value={e}>
+                {ESTADO_INFO[e].etiqueta}
+              </option>
+            ))}
           </select>
+        </label>
+        <label className="flex items-center gap-2 self-end pb-2 text-sm">
+          <input
+            type="checkbox"
+            checked={soloConAlerta}
+            onChange={(e) => setSoloConAlerta(e.target.checked)}
+          />
+          Solo con alerta de contacto
         </label>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="flex items-center gap-3 rounded-xl border border-white/50 bg-white/40 backdrop-blur-md p-4">
-          <Punto color="pink" />
-          <div>
-            <p className="text-2xl font-semibold text-pink-600">{totales.rosa}</p>
-            <p className="text-sm text-foreground/60">Puntos en rosa</p>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        {(Object.keys(ESTADO_INFO) as EstadoDesempeno[]).map((e) => (
+          <div
+            key={e}
+            className="flex items-center gap-3 rounded-xl border border-white/50 bg-white/40 backdrop-blur-md p-4"
+          >
+            <Punto color={ESTADO_INFO[e].color} />
+            <div>
+              <p className={`text-2xl font-semibold ${TEXTO_CLASES[ESTADO_INFO[e].color]}`}>{totales[e]}</p>
+              <p className="text-sm text-foreground/60">{ESTADO_INFO[e].etiqueta}</p>
+            </div>
           </div>
-        </div>
+        ))}
         <div className="flex items-center gap-3 rounded-xl border border-white/50 bg-white/40 backdrop-blur-md p-4">
-          <Punto color="amber" />
+          <AlertTriangle className="h-4 w-4 shrink-0 text-orange-500" />
           <div>
-            <p className="text-2xl font-semibold text-amber-600">{totales.amarillo}</p>
-            <p className="text-sm text-foreground/60">Puntos en amarillo</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 rounded-xl border border-white/50 bg-white/40 backdrop-blur-md p-4">
-          <Punto color="green" />
-          <div>
-            <p className="text-2xl font-semibold text-green-600">{totales.verde}</p>
-            <p className="text-sm text-foreground/60">Puntos en verde</p>
+            <p className="text-2xl font-semibold text-orange-600">{totales.requierenContacto}</p>
+            <p className="text-sm text-foreground/60">Requieren contacto</p>
           </div>
         </div>
       </div>
@@ -410,12 +476,17 @@ export default function DesempenoPage() {
             >
               <div className="mb-1 flex items-start justify-between gap-2">
                 <h2 className="font-semibold text-[var(--foreground)]">{f.nombre}</h2>
-                <div className="flex shrink-0 items-center gap-2">
+                <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
                   <span
-                    className={`flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-medium ${BADGE_CLASES[f.semaforo.color]}`}
+                    className={`flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-medium ${BADGE_CLASES[ESTADO_INFO[f.estado].color]}`}
                   >
-                    <Punto color={f.semaforo.color} /> {f.semaforo.label}
+                    <Punto color={ESTADO_INFO[f.estado].color} /> {ESTADO_INFO[f.estado].etiqueta}
                   </span>
+                  {f.alertaContacto && (
+                    <span className="flex items-center gap-1 rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-medium text-orange-700">
+                      <AlertTriangle className="h-2.5 w-2.5" /> Requiere contacto
+                    </span>
+                  )}
                   {esAdmin && (
                     <button
                       onClick={() => abrirEdicion(f)}
@@ -434,30 +505,51 @@ export default function DesempenoPage() {
                 {f.tipoContenedor ? ` · ${f.tipoContenedor}` : ""}
               </p>
 
-              <div className="mb-3 grid grid-cols-2 gap-x-3 gap-y-2 rounded-lg bg-white/40 p-3 text-xs">
-                <div>
-                  <p className="text-[var(--muted)]">Recolecciones</p>
-                  <p className="font-medium text-[var(--foreground)]">{f.totalRecolecciones}</p>
-                </div>
-                <div>
-                  <p className="text-[var(--muted)]">Últimos 6 meses</p>
-                  <p className="font-medium text-[var(--foreground)]">{f.conteoVentanaMovil}</p>
-                </div>
-                <div>
-                  <p className="text-[var(--muted)]">Kgs Tapas</p>
-                  <p className="font-medium text-[var(--foreground)]">{f.kgsTapasTotal.toFixed(2)}</p>
-                </div>
-                <div>
-                  <p className="text-[var(--muted)]">Frecuencia</p>
-                  <p className="font-medium text-[var(--foreground)]">{f.frecuencia}</p>
-                </div>
-                <div className="col-span-2">
-                  <p className="text-[var(--muted)]">Última recolección</p>
-                  <p className="font-medium text-[var(--foreground)]">
-                    {f.ultimaRecoleccion ? f.ultimaRecoleccion.slice(0, 10) : "—"}
+              {f.estado === "DATOS_INCOMPLETOS" ? (
+                <div className="mb-3 rounded-lg bg-white/40 p-3 text-xs">
+                  <p className="text-[var(--muted)]">
+                    Sin ninguna Fecha de Acopio registrada — no se puede calcular antigüedad ni estado
+                    anual hasta que exista al menos una.
                   </p>
                 </div>
-              </div>
+              ) : (
+                <div className="mb-3 grid grid-cols-2 gap-x-3 gap-y-2 rounded-lg bg-white/40 p-3 text-xs">
+                  <div>
+                    <p className="text-[var(--muted)]">
+                      {f.estado === "EN_SEGUIMIENTO_INICIAL" ? "Recolecciones desde el alta" : "Recolecciones (12 meses)"}
+                    </p>
+                    <p className="font-medium text-[var(--foreground)]">
+                      {f.totalRecolecciones} / {f.metaAnual} meta anual
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[var(--muted)]">
+                      {f.estado === "EN_SEGUIMIENTO_INICIAL" ? "Activo desde hace" : "Cumplimiento anual"}
+                    </p>
+                    <p className="font-medium text-[var(--foreground)]">
+                      {f.estado === "EN_SEGUIMIENTO_INICIAL"
+                        ? `${f.mesesActivos} mes${f.mesesActivos === 1 ? "" : "es"}`
+                        : `${f.cumplimientoAnual?.toFixed(0)}%`}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[var(--muted)]">Fecha de alta</p>
+                    <p className="font-medium text-[var(--foreground)]">{fmtFecha(f.fechaAlta)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[var(--muted)]">Kgs Tapas (periodo)</p>
+                    <p className="font-medium text-[var(--foreground)]">{fmtKg(f.kgTapasPeriodo)}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-[var(--muted)]">Última recolección</p>
+                    <p className="font-medium text-[var(--foreground)]">
+                      {f.ultimaRecoleccion
+                        ? `${fmtFecha(f.ultimaRecoleccion)} · hace ${f.diasSinRecoleccion} día${f.diasSinRecoleccion === 1 ? "" : "s"}`
+                        : "Sin recolecciones"}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {f.decisionReubicacion && (
                 <p className="mb-2 flex items-center gap-1 text-xs text-[var(--muted)]">
