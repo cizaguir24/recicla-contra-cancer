@@ -1,6 +1,7 @@
 "use client";
 
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { useEffect } from "react";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -14,6 +15,27 @@ L.Icon.Default.mergeOptions({
   iconUrl: "/leaflet/marker-icon.png",
   shadowUrl: "/leaflet/marker-shadow.png",
 });
+
+// Punto rojo simple (distinto del pin azul de los centros) para la
+// ubicación de quien busca — no es un centro de acopio real, así que no
+// debe confundirse con uno.
+const iconoUbicacion = L.divIcon({
+  className: "",
+  html: '<div style="width:16px;height:16px;border-radius:9999px;background:#ef4444;border:3px solid white;box-shadow:0 0 0 2px rgba(239,68,68,0.45);"></div>',
+  iconSize: [16, 16],
+  iconAnchor: [8, 8],
+});
+
+// Centra el mapa en la ubicación de quien busca en cuanto la captura
+// (búsqueda por dirección o "usar mi ubicación"). MapContainer solo lee
+// `center` al montarse, así que un cambio posterior necesita esto.
+function CentrarEnUbicacion({ ubicacion }: { ubicacion: { lat: number; lng: number } | null }) {
+  const map = useMap();
+  useEffect(() => {
+    if (ubicacion) map.setView([ubicacion.lat, ubicacion.lng], 13);
+  }, [ubicacion, map]);
+  return null;
+}
 
 export type PuntoMapa = {
   id: string;
@@ -30,12 +52,14 @@ export default function PuntosAcopioMap({
   zoom = 10,
   mensajeVacio = "Ningún punto de acopio visible tiene ubicación geocodificada todavía.",
   scrollWheelZoom = true,
+  miUbicacion = null,
 }: {
   puntos: PuntoMapa[];
   className?: string;
   zoom?: number;
   mensajeVacio?: string;
   scrollWheelZoom?: boolean;
+  miUbicacion?: { lat: number; lng: number } | null;
 }) {
   const conUbicacion = puntos.filter(
     (p): p is PuntoMapa & { lat: number; lng: number } => p.lat != null && p.lng != null,
@@ -73,6 +97,12 @@ export default function PuntosAcopioMap({
             </Popup>
           </Marker>
         ))}
+        {miUbicacion && (
+          <Marker position={[miUbicacion.lat, miUbicacion.lng]} icon={iconoUbicacion}>
+            <Popup>Tu ubicación aproximada</Popup>
+          </Marker>
+        )}
+        <CentrarEnUbicacion ubicacion={miUbicacion} />
       </MapContainer>
     </div>
   );
