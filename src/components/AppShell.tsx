@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { PermisosProvider } from "@/lib/role-context";
 import type { Permisos } from "@/lib/roles";
+import BotonAntiestres from "@/components/BotonAntiestres";
 
 const NAV = [
   { href: "/reportes/informes", label: "Informes", icon: BarChart3, color: "bg-blue-500" },
@@ -120,7 +121,8 @@ export default function AppShell({
           {!collapsed && "Ocultar menú"}
         </button>
         <SidebarContent pathname={pathname} collapsed={collapsed} nav={nav} />
-        <div className="mt-auto pt-3">
+        <div className="mt-auto space-y-3 pt-3">
+          <BotonAntiestres compacto={collapsed} />
           <UserFooter userLabel={userLabel} signOutAction={signOutAction} collapsed={collapsed} />
           {appVersion && !collapsed && <VersionLabel version={appVersion} />}
         </div>
@@ -143,7 +145,8 @@ export default function AppShell({
               </button>
             </div>
             <SidebarContent pathname={pathname} onNavigate={() => setOpen(false)} nav={nav} />
-            <div className="mt-auto pt-3">
+            <div className="mt-auto space-y-3 pt-3">
+              <BotonAntiestres />
               <UserFooter userLabel={userLabel} signOutAction={signOutAction} />
               {appVersion && <VersionLabel version={appVersion} />}
             </div>
