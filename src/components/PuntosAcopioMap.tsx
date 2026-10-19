@@ -44,7 +44,7 @@ export default function PuntosAcopioMap({
   if (conUbicacion.length === 0) {
     return (
       <div
-        className={`flex items-center justify-center rounded-xl border border-dashed border-white/60 bg-white/20 text-center text-sm text-[var(--muted)] ${className}`}
+        className={`flex items-center justify-center rounded-xl border border-dashed border-white/60 bg-white/20 text-center text-sm text-[var(--muted)] dark:border-slate-700/60 dark:bg-slate-800/30 dark:text-slate-400 ${className}`}
       >
         {mensajeVacio}
       </div>
@@ -57,7 +57,7 @@ export default function PuntosAcopioMap({
   ];
 
   return (
-    <div className={`w-full overflow-hidden rounded-xl border border-white/60 ${className}`}>
+    <div className={`w-full overflow-hidden rounded-xl border border-white/60 dark:border-slate-700/60 ${className}`}>
       <MapContainer center={centro} zoom={zoom} scrollWheelZoom={scrollWheelZoom} className="h-full w-full">
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
