@@ -1,29 +1,43 @@
 import { prisma } from "@/lib/prisma";
+import { hoyMexico, sumarMeses, sumarDias, diferenciaDias } from "@/lib/fecha-calendario";
 
-const MS_POR_DIA = 1000 * 60 * 60 * 24;
+// Indicador anual de Desempeño por Punto de Acopio (ver "Métricas RCC" —
+// instrucciones funcionales de Cómplices AC). Evalúa frecuencia de
+// recolección con una ventana móvil de los últimos 12 meses calendario,
+// meta de 6 recolecciones anuales; los kilogramos se muestran aparte y
+// nunca alimentan el semáforo.
+export const META_ANUAL = 6;
 
-function calcularFrecuencia(fechas: Date[]): string {
-  if (fechas.length < 2) return "Sin datos suficientes";
-  const ordenadas = [...fechas].sort((a, b) => a.getTime() - b.getTime());
-  let sumaDias = 0;
-  for (let i = 1; i < ordenadas.length; i++) {
-    sumaDias += (ordenadas[i].getTime() - ordenadas[i - 1].getTime()) / MS_POR_DIA;
-  }
-  const promedio = sumaDias / (ordenadas.length - 1);
-  if (promedio <= 100) return "Trimestral";
-  if (promedio <= 200) return "Semestral";
-  return "Anual";
-}
+export type EstadoDesempeno = "VERDE" | "AMARILLO" | "ROJO" | "EN_SEGUIMIENTO_INICIAL" | "DATOS_INCOMPLETOS";
 
-// Umbrales confirmados por el usuario: rosa <=2, amarillo ==3, verde >=4,
-// medidos en una ventana móvil de los últimos 6 meses (no el semestre calendario).
-export function calcularSemaforo(conteo: number) {
-  if (conteo <= 2) return { color: "pink" as const, label: "Rosa" };
-  if (conteo === 3) return { color: "amber" as const, label: "Amarillo" };
-  return { color: "green" as const, label: "Verde" };
-}
+export type ColorEstado = "green" | "amber" | "red" | "sky" | "gray";
 
-export type FilaDesempeno = {
+export const ESTADO_INFO: Record<EstadoDesempeno, { etiqueta: string; color: ColorEstado }> = {
+  VERDE: { etiqueta: "Verde", color: "green" },
+  AMARILLO: { etiqueta: "Amarillo", color: "amber" },
+  ROJO: { etiqueta: "Rojo", color: "red" },
+  EN_SEGUIMIENTO_INICIAL: { etiqueta: "En seguimiento inicial", color: "sky" },
+  DATOS_INCOMPLETOS: { etiqueta: "Datos incompletos", color: "gray" },
+};
+
+export type EventoAcopio = { fecha: Date; estado: string; tapasKg: number | null };
+
+export type CalculoDesempeno = {
+  periodoInicio: Date | null;
+  periodoFin: Date | null;
+  totalRecolecciones: number;
+  metaAnual: number;
+  estado: EstadoDesempeno;
+  cumplimientoAnual: number | null;
+  fechaAlta: Date | null;
+  mesesActivos: number | null;
+  ultimaRecoleccion: Date | null;
+  diasSinRecoleccion: number | null;
+  alertaContacto: boolean;
+  kgTapasPeriodo: number | null;
+};
+
+export type FilaDesempeno = CalculoDesempeno & {
   id: string;
   nombre: string;
   municipio: string | null;
@@ -32,35 +46,102 @@ export type FilaDesempeno = {
   decisionReubicacion: string | null;
   numeroCelular: string | null;
   correoElectronico: string | null;
-  totalRecolecciones: number;
-  ultimaRecoleccion: Date | null;
-  kgsTapasTotal: number;
-  frecuencia: string;
-  semaforo: { color: "pink" | "amber" | "green"; label: string };
-  conteoVentanaMovil: number;
 };
 
+function mesesEnteros(desde: Date, hasta: Date): number {
+  let meses = (hasta.getUTCFullYear() - desde.getUTCFullYear()) * 12 + (hasta.getUTCMonth() - desde.getUTCMonth());
+  if (hasta.getUTCDate() < desde.getUTCDate()) meses--;
+  return Math.max(0, meses);
+}
+
+// Núcleo puro del indicador — sin Prisma, para poder probar a fondo los
+// casos límite del aniversario, fin de mes y año bisiesto con fechas
+// sintéticas (ver scripts/_test-desempeno-temp.ts). `eventos` son TODAS las
+// fechas de acopio del punto (cualquier estado), ya ordenadas por fecha.
+export function calcularDesempenoPunto(eventos: EventoAcopio[], hoy: Date): CalculoDesempeno {
+  const realizadas = eventos.filter((e) => e.estado === "realizada");
+
+  // Fecha de alta: la "Fecha de Acopio" más antigua registrada para el
+  // punto (Registro Acopios 2026 en Notion), sin importar su estado —
+  // aprobado como proxy de antigüedad real ante la falta de una "Fecha de
+  // alta" propia en el modelo de datos. Sin ninguna fecha, no hay forma
+  // confiable de saber la antigüedad.
+  const fechaAlta = eventos.length > 0 ? eventos[0].fecha : null;
+
+  const inicioPeriodo = sumarMeses(hoy, -12);
+  const finPeriodo = sumarDias(hoy, 1); // exclusivo: hoy cuenta, mañana no
+
+  const eventosPeriodo = realizadas.filter((e) => e.fecha >= inicioPeriodo && e.fecha < finPeriodo);
+  const totalRecolecciones = eventosPeriodo.length;
+
+  const ultimaRecoleccion = realizadas.length > 0 ? realizadas[realizadas.length - 1].fecha : null;
+
+  let estado: EstadoDesempeno;
+  let cumplimientoAnual: number | null = null;
+  let mesesActivos: number | null = null;
+
+  if (!fechaAlta || fechaAlta > hoy) {
+    estado = "DATOS_INCOMPLETOS";
+  } else {
+    mesesActivos = mesesEnteros(fechaAlta, hoy);
+    if (hoy < sumarMeses(fechaAlta, 12)) {
+      estado = "EN_SEGUIMIENTO_INICIAL";
+    } else if (totalRecolecciones >= META_ANUAL) {
+      estado = "VERDE";
+      cumplimientoAnual = (totalRecolecciones / META_ANUAL) * 100;
+    } else if (totalRecolecciones >= 4) {
+      estado = "AMARILLO";
+      cumplimientoAnual = (totalRecolecciones / META_ANUAL) * 100;
+    } else {
+      estado = "ROJO";
+      cumplimientoAnual = (totalRecolecciones / META_ANUAL) * 100;
+    }
+  }
+
+  // Alerta de inactividad: independiente del semáforo anual, basada en el
+  // historial COMPLETO (no el periodo de 12 meses) — puede coexistir con
+  // cualquier estado, incluido Verde.
+  const baseAlerta = ultimaRecoleccion ?? fechaAlta;
+  const alertaContacto = baseAlerta ? hoy > sumarMeses(baseAlerta, 2) : false;
+
+  const hayDatoKgConfiable = eventosPeriodo.some((e) => e.tapasKg != null);
+  const kgTapasPeriodo = hayDatoKgConfiable
+    ? eventosPeriodo.reduce((suma, e) => suma + (e.tapasKg ?? 0), 0)
+    : null;
+
+  return {
+    periodoInicio: fechaAlta ? inicioPeriodo : null,
+    periodoFin: fechaAlta ? finPeriodo : null,
+    totalRecolecciones,
+    metaAnual: META_ANUAL,
+    estado,
+    cumplimientoAnual,
+    fechaAlta,
+    mesesActivos,
+    ultimaRecoleccion,
+    diasSinRecoleccion: ultimaRecoleccion ? diferenciaDias(hoy, ultimaRecoleccion) : null,
+    alertaContacto,
+    kgTapasPeriodo,
+  };
+}
+
 export async function obtenerDesempeno(): Promise<FilaDesempeno[]> {
-  const hoy = new Date();
-  const inicioVentanaMovil = new Date(hoy.getFullYear(), hoy.getMonth() - 6, hoy.getDate());
+  const hoy = hoyMexico();
 
   const puntos = await prisma.puntoAcopio.findMany({
     include: {
-      fechas: {
-        where: { estado: "realizada" },
-        orderBy: { fecha: "asc" },
-      },
+      // Se necesita TODO el historial (no solo el periodo de 12 meses) para
+      // fecha de alta, última recolección y la alerta de inactividad.
+      fechas: { orderBy: { fecha: "asc" } },
     },
     orderBy: { nombre: "asc" },
   });
 
-  const filas = puntos.map((punto) => {
-    const fechas = punto.fechas.map((f) => f.fecha);
-
-    const conteoVentanaMovil = fechas.filter((f) => f >= inicioVentanaMovil && f <= hoy).length;
-
-    const kgsTapasTotal = punto.fechas.reduce((suma, f) => suma + (f.tapasKg ?? 0), 0);
-    const ultimaRecoleccion = fechas.length > 0 ? fechas[fechas.length - 1] : null;
+  const filas = puntos.map((punto): FilaDesempeno => {
+    const calculo = calcularDesempenoPunto(
+      punto.fechas.map((f) => ({ fecha: f.fecha, estado: f.estado, tapasKg: f.tapasKg })),
+      hoy,
+    );
 
     return {
       id: punto.id,
@@ -71,19 +152,18 @@ export async function obtenerDesempeno(): Promise<FilaDesempeno[]> {
       decisionReubicacion: punto.decisionReubicacion,
       numeroCelular: punto.numeroCelular,
       correoElectronico: punto.correoElectronico,
-      totalRecolecciones: fechas.length,
-      ultimaRecoleccion,
-      kgsTapasTotal,
-      frecuencia: calcularFrecuencia(fechas),
-      semaforo: calcularSemaforo(conteoVentanaMovil),
-      conteoVentanaMovil,
+      ...calculo,
     };
   });
 
-  filas.sort((a, b) => {
-    const orden = { Rosa: 0, Amarillo: 1, Verde: 2 };
-    return orden[a.semaforo.label as keyof typeof orden] - orden[b.semaforo.label as keyof typeof orden];
-  });
+  const ordenEstado: Record<EstadoDesempeno, number> = {
+    ROJO: 0,
+    AMARILLO: 1,
+    DATOS_INCOMPLETOS: 2,
+    EN_SEGUIMIENTO_INICIAL: 3,
+    VERDE: 4,
+  };
+  filas.sort((a, b) => ordenEstado[a.estado] - ordenEstado[b.estado]);
 
   return filas;
 }

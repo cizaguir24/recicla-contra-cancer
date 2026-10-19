@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     }),
   ]);
 
-  const enRojo = filas.filter((f) => f.semaforo.label === "Rosa");
+  const enRojo = filas.filter((f) => f.estado === "ROJO");
   const inactivosMapeados = inactivos.map((p) => ({
     id: p.id,
     nombre: p.nombre,
