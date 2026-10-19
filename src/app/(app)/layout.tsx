@@ -1,6 +1,7 @@
 import { auth, signOut } from "@/auth";
 import AppShell from "@/components/AppShell";
 import { PERMISOS_VACIOS } from "@/lib/roles";
+import packageJson from "../../../package.json";
 
 export default async function AppLayout({
   children,
@@ -17,7 +18,12 @@ export default async function AppLayout({
   }
 
   return (
-    <AppShell userLabel={userLabel} permisos={permisos} signOutAction={signOutAction}>
+    <AppShell
+      userLabel={userLabel}
+      permisos={permisos}
+      signOutAction={signOutAction}
+      appVersion={packageJson.version}
+    >
       {children}
     </AppShell>
   );
