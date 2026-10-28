@@ -42,6 +42,7 @@ export type CalculoDesempeno = {
 export type FilaDesempeno = CalculoDesempeno & {
   id: string;
   nombre: string;
+  activo: boolean;
   municipio: string | null;
   responsable: string | null;
   tipoContenedor: string | null;
@@ -136,6 +137,7 @@ export async function obtenerDesempeno(): Promise<FilaDesempeno[]> {
     return {
       id: punto.id,
       nombre: punto.nombre,
+      activo: punto.activo,
       municipio: punto.zona,
       responsable: punto.responsable,
       tipoContenedor: punto.tipoContenedor,
