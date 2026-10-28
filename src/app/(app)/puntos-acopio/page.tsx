@@ -210,10 +210,11 @@ export default function PuntosAcopioPage() {
     await cargarPuntos();
   }
 
-  const puntosFiltrados = useMemo(() => {
+  // Mismos filtros que puntosFiltrados, salvo el de activo/inactivo: sirve
+  // para que las tarjetas de conteo siempre muestren cuántos hay de cada
+  // uno (no se vacían entre sí cuando una ya está seleccionada).
+  const puntosSinFiltroActivo = useMemo(() => {
     return puntos.filter((p) => {
-      if (filtroActivo === "activos" && !p.activo) return false;
-      if (filtroActivo === "inactivos" && p.activo) return false;
       if (busqueda && !coincideBusqueda(busqueda, p.nombre, p.zona, p.responsable)) return false;
       // Sin "Privada" explícito en Notion/el formulario, el punto sigue
       // siendo público — así no desaparece nada de lo que ya existía antes
@@ -223,7 +224,28 @@ export default function PuntosAcopioPage() {
       if (filtroVisibilidad === "privadas" && !esPrivada) return false;
       return true;
     });
-  }, [puntos, busqueda, filtroActivo, filtroVisibilidad]);
+  }, [puntos, busqueda, filtroVisibilidad]);
+
+  const totalActivos = useMemo(
+    () => puntosSinFiltroActivo.filter((p) => p.activo).length,
+    [puntosSinFiltroActivo],
+  );
+  const totalInactivos = useMemo(
+    () => puntosSinFiltroActivo.filter((p) => !p.activo).length,
+    [puntosSinFiltroActivo],
+  );
+
+  const puntosFiltrados = useMemo(() => {
+    return puntosSinFiltroActivo.filter((p) => {
+      if (filtroActivo === "activos" && !p.activo) return false;
+      if (filtroActivo === "inactivos" && p.activo) return false;
+      return true;
+    });
+  }, [puntosSinFiltroActivo, filtroActivo]);
+
+  function alternarFiltroActivo(valor: "activos" | "inactivos") {
+    setFiltroActivo((actual) => (actual === valor ? "todos" : valor));
+  }
 
   return (
     <div className="space-y-6">
@@ -255,17 +277,43 @@ export default function PuntosAcopioPage() {
 
       {mostrarMapa && <PuntosAcopioMap puntos={puntosFiltrados} />}
 
+      <div className="grid grid-cols-2 gap-3 sm:max-w-md">
+        <button
+          type="button"
+          onClick={() => alternarFiltroActivo("activos")}
+          title={filtroActivo === "activos" ? "Quitar filtro" : "Ver solo activos"}
+          className={`flex items-center gap-3 rounded-xl border p-4 text-left backdrop-blur-md transition-colors ${
+            filtroActivo === "activos"
+              ? "border-green-400 bg-green-50"
+              : "border-white/50 bg-white/40 hover:bg-white/60"
+          }`}
+        >
+          <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-green-500" />
+          <span>
+            <span className="block text-2xl font-semibold text-green-600">{totalActivos}</span>
+            <span className="block text-sm text-foreground/60">Activos</span>
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => alternarFiltroActivo("inactivos")}
+          title={filtroActivo === "inactivos" ? "Quitar filtro" : "Ver solo inactivos"}
+          className={`flex items-center gap-3 rounded-xl border p-4 text-left backdrop-blur-md transition-colors ${
+            filtroActivo === "inactivos"
+              ? "border-gray-400 bg-gray-100"
+              : "border-white/50 bg-white/40 hover:bg-white/60"
+          }`}
+        >
+          <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-gray-400" />
+          <span>
+            <span className="block text-2xl font-semibold text-gray-600">{totalInactivos}</span>
+            <span className="block text-sm text-foreground/60">Inactivos</span>
+          </span>
+        </button>
+      </div>
+
       <div className="flex flex-wrap items-center gap-3">
         <SearchBar value={busqueda} onChange={setBusqueda} className="sm:max-w-md" />
-        <select
-          value={filtroActivo}
-          onChange={(e) => setFiltroActivo(e.target.value as "activos" | "inactivos" | "todos")}
-          className="input w-auto"
-        >
-          <option value="activos">Activos</option>
-          <option value="inactivos">Inactivos</option>
-          <option value="todos">Todos</option>
-        </select>
         <select
           value={filtroVisibilidad}
           onChange={(e) => setFiltroVisibilidad(e.target.value as typeof filtroVisibilidad)}

@@ -35,6 +35,7 @@ const ESTADO_INFO: Record<EstadoDesempeno, { etiqueta: string; color: ColorEstad
 type FilaDesempeno = {
   id: string;
   nombre: string;
+  activo: boolean;
   municipio: string | null;
   responsable: string | null;
   tipoContenedor: string | null;
@@ -98,6 +99,7 @@ function exportarCSV(filas: FilaDesempeno[]) {
     `desempeno-puntos-acopio-${new Date().toISOString().slice(0, 10)}.csv`,
     [
       "Punto de acopio",
+      "Activo",
       "Municipio",
       "Tipo de contenedor",
       "Estado",
@@ -116,6 +118,7 @@ function exportarCSV(filas: FilaDesempeno[]) {
     ],
     filas.map((f) => [
       f.nombre,
+      f.activo ? "Sí" : "No",
       f.municipio ?? "",
       f.tipoContenedor ?? "",
       ESTADO_INFO[f.estado].etiqueta,
@@ -169,6 +172,7 @@ export default function DesempenoPage() {
   const [cargando, setCargando] = useState(true);
   const [filtroContenedor, setFiltroContenedor] = useState("");
   const [filtroEstado, setFiltroEstado] = useState<"" | EstadoDesempeno>("");
+  const [filtroActivo, setFiltroActivo] = useState<"" | "activo" | "inactivo">("");
   const [soloConAlerta, setSoloConAlerta] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const [editandoId, setEditandoId] = useState<string | null>(null);
@@ -346,6 +350,9 @@ export default function DesempenoPage() {
     if (filtroEstado) {
       resultado = resultado.filter((f) => f.estado === filtroEstado);
     }
+    if (filtroActivo) {
+      resultado = resultado.filter((f) => (filtroActivo === "activo" ? f.activo : !f.activo));
+    }
     if (soloConAlerta) {
       resultado = resultado.filter((f) => f.alertaContacto);
     }
@@ -355,7 +362,7 @@ export default function DesempenoPage() {
       );
     }
     return resultado;
-  }, [filas, filtroContenedor, filtroEstado, soloConAlerta, busqueda]);
+  }, [filas, filtroContenedor, filtroEstado, filtroActivo, soloConAlerta, busqueda]);
 
   // La meta a la fecha es la misma para todos los puntos (depende del mes
   // actual, no de cada punto) — se toma de cualquier fila ya cargada; antes
@@ -395,7 +402,7 @@ export default function DesempenoPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 rounded-xl border border-white/50 bg-white/40 backdrop-blur-md p-4 sm:grid-cols-[1fr_auto_auto] sm:items-end">
+      <div className="grid grid-cols-1 gap-3 rounded-xl border border-white/50 bg-white/40 backdrop-blur-md p-4 sm:grid-cols-[1fr_auto_auto_auto] sm:items-end">
         <label className="space-y-1 text-sm">
           <span className="font-medium">Buscar</span>
           <SearchBar value={busqueda} onChange={setBusqueda} />
@@ -429,6 +436,18 @@ export default function DesempenoPage() {
                 {ESTADO_INFO[e].etiqueta}
               </option>
             ))}
+          </select>
+        </label>
+        <label className="space-y-1 text-sm sm:w-40">
+          <span className="font-medium">Activo</span>
+          <select
+            value={filtroActivo}
+            onChange={(e) => setFiltroActivo(e.target.value as "" | "activo" | "inactivo")}
+            className="input"
+          >
+            <option value="">Todos</option>
+            <option value="activo">Activos</option>
+            <option value="inactivo">Inactivos</option>
           </select>
         </label>
         <label className="flex items-center gap-2 self-end pb-2 text-sm">
@@ -480,6 +499,11 @@ export default function DesempenoPage() {
                   >
                     <Punto color={ESTADO_INFO[f.estado].color} /> {ESTADO_INFO[f.estado].etiqueta}
                   </span>
+                  {!f.activo && (
+                    <span className="rounded-full bg-gray-200 px-2 py-0.5 text-[10px] font-medium text-gray-600">
+                      Inactivo
+                    </span>
+                  )}
                   {f.alertaContacto && (
                     <span className="flex items-center gap-1 rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-medium text-orange-700">
                       <AlertTriangle className="h-2.5 w-2.5" /> Requiere contacto
